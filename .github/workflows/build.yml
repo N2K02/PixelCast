@@ -26,7 +26,9 @@ jobs:
           chmod +x gradlew
           set -o pipefail
           ./gradlew --no-daemon assembleDebug 2>&1 | tee build.log || {
-            grep -E '^e: |error:|What went wrong' -A3 build.log | head -40 | while IFS= read -r l; do echo "::error::$l"; done
+            # One annotation with the full error text (GitHub caps annotations per step at 10).
+            msg=$(grep -E '^e: |error:|What went wrong|Dependency .* requires|compileSdk|Android Gradle plugin' -A3 build.log | head -80 | sed -e 's/%/%25/g' | awk 'BEGIN{ORS="%0A"} {print}')
+            echo "::error title=Build failed::$msg"
             exit 1
           }
           cp app/build/outputs/apk/debug/app-debug.apk PixelCast.apk
