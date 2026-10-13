@@ -11,8 +11,8 @@ android {
         applicationId = "com.pixelcast.app"
         minSdk = 29
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.2"
+        versionCode = 3
+        versionName = "0.3"
     }
 
     signingConfigs {
@@ -30,7 +30,11 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
         getByName("release") {
-            isMinifyEnabled = false
+            // R8 removes unused code (most of Compose) and resources: ~32 MB -> a few MB.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Same fixed key as debug, so it installs over earlier builds.
             signingConfig = signingConfigs.getByName("debug")
         }
     }

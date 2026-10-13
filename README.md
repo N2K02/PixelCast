@@ -32,7 +32,7 @@ Not supported (yet): live screen mirroring, subtitles, playlists, TV volume.
 
 ## Build
 
-Every push to `main` builds the APK with GitHub Actions and publishes it as a release. Locally: `./gradlew assembleDebug` (needs JDK 17 + Android SDK). UI: Jetpack Compose with Material 3 Expressive (dynamic color, follows system light/dark).
+Every push to `main` builds the APK with GitHub Actions and publishes it as a release. Locally: `./gradlew assembleRelease` (shrunk APK) (needs JDK 17 + Android SDK). UI: Jetpack Compose with Material 3 Expressive (dynamic color, follows system light/dark).
 
 | File | What it does |
 |---|---|
