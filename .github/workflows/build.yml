@@ -1,0 +1,47 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build APK
+        run: |
+          echo "Android SDK: ${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          yes | "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          chmod +x gradlew
+          set -o pipefail
+          ./gradlew --no-daemon assembleDebug 2>&1 | tee build.log || {
+            grep -E '^e: |error:|What went wrong' -A3 build.log | head -40 | while IFS= read -r l; do echo "::error::$l"; done
+            exit 1
+          }
+          cp app/build/outputs/apk/debug/app-debug.apk PixelCast.apk
+
+      - name: Upload APK (workflow artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: PixelCast-apk
+          path: PixelCast.apk
+
+      - name: Publish APK as a release (easy phone download)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: PixelCast build ${{ github.run_number }}
+          body: Download PixelCast.apk below and install it on your Pixel.
+          files: PixelCast.apk
+          make_latest: true
