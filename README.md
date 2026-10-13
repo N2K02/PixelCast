@@ -32,7 +32,7 @@ Not supported (yet): live screen mirroring, subtitles, playlists, TV volume.
 
 ## Build
 
-Every push to `main` builds the APK with GitHub Actions and publishes it as a release. Locally: `./gradlew assembleDebug` (needs JDK 17 + Android SDK). No third-party libraries — only the Android SDK.
+Every push to `main` builds the APK with GitHub Actions and publishes it as a release. Locally: `./gradlew assembleDebug` (needs JDK 17 + Android SDK). UI: Jetpack Compose with Material 3 Expressive (dynamic color, follows system light/dark).
 
 | File | What it does |
 |---|---|
@@ -40,4 +40,5 @@ Every push to `main` builds the APK with GitHub Actions and publishes it as a re
 | `AvTransport.kt` | SOAP commands: SetAVTransportURI, Play, Pause, Seek, Stop, position/state |
 | `MediaHttpServer.kt` | Streams the chosen file to the TV with HTTP Range + DLNA headers |
 | `CastService.kt` | Foreground service, MediaSession, notification, polling the TV |
-| `MainActivity.kt` | Choose file, find TV, cast, in-app controls |
+| `MainActivity.kt` | Choose file, find TV, cast |
+| `CastScreen.kt`, `Theme.kt` | Material 3 Expressive UI and theme |

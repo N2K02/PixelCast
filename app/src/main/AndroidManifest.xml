@@ -18,7 +18,7 @@
         android:allowBackup="false"
         android:icon="@drawable/ic_launcher"
         android:label="PixelCast"
-        android:theme="@android:style/Theme.Material.Light.DarkActionBar"
+        android:theme="@style/Theme.PixelCast"
         android:usesCleartextTraffic="true">
 
         <activity
