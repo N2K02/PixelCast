@@ -13,7 +13,7 @@ The TV decodes the file itself, so quality is full and the phone barely works.
 
 ## Install & use
 
-1. Download `PixelCast.apk` from the latest **Release** of this repo and install it (allow "install unknown apps").
+1. Download `PixelCast-<version>.apk` (e.g. `PixelCast-1.0.apk`) from the latest **Release** of this repo and install it (allow "install unknown apps").
 2. Turn the TV on. Phone and TV must be on the **same Wi-Fi**.
 3. Open PixelCast → **Choose file** (or *Share* a video from Files/Photos to PixelCast).
 4. It searches for TVs automatically → pick your Samsung → **Cast**.
@@ -32,7 +32,7 @@ Not supported (yet): live screen mirroring, subtitles, playlists, TV volume.
 
 ## Build
 
-Every push to `main` builds the APK with GitHub Actions and publishes it as a release. Locally: `./gradlew assembleRelease` (shrunk APK) (needs JDK 17 + Android SDK). UI: Jetpack Compose with Material 3 Expressive (dynamic color, follows system light/dark).
+Every push to `main` builds the APK with GitHub Actions and publishes it as a release named "PixelCast <version>" (1.0, 1.1, 1.2 …, one decimal place) with release notes listing the changes since the previous release. To jump to a new number (e.g. 2.0), run the workflow by hand from the Actions tab and type the version. Locally: `./gradlew assembleRelease` (shrunk APK) (needs JDK 17 + Android SDK). UI: Jetpack Compose with Material 3 Expressive (dynamic color, follows system light/dark).
 
 | File | What it does |
 |---|---|
