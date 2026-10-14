@@ -87,6 +87,7 @@ fun CastScreen(state: UiState, actions: UiActions) {
                 scrollBehavior = scrollBehavior,
             )
         },
+        bottomBar = { UpdateFooterBar("PixelCast") },
     ) { padding ->
         LazyColumn(
             contentPadding = PaddingValues(
@@ -131,7 +132,6 @@ fun CastScreen(state: UiState, actions: UiActions) {
                     modifier = Modifier.padding(horizontal = 4.dp),
                 )
             }
-            item { UpdateFooter("PixelCast") }
         }
     }
 }
