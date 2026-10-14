@@ -1,6 +1,12 @@
 # PixelCast
 
+[![Latest release](https://img.shields.io/github/v/release/N2K02/PixelCast?label=download)](https://github.com/N2K02/PixelCast/releases/latest) ![Android 10+](https://img.shields.io/badge/Android-10%2B-3DDC84?logo=android&logoColor=white) ![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?logo=kotlin&logoColor=white) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Cast videos and songs from a **Pixel** (Google Cast) to a **Samsung TV** (DLNA) — and control playback from the phone's **notification**.
+
+*DLNA/UPnP casting app for Android: cast local videos and music from a Google Pixel to a Samsung Smart TV, with notification controls.*
+
+**[⬇ Download the latest APK](https://github.com/N2K02/PixelCast/releases/latest)** · Android 10 or newer · Free and open source
 
 Pixels speak Google Cast; Samsung TVs don't. Both speak **DLNA/UPnP**, so PixelCast:
 
