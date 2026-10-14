@@ -42,3 +42,7 @@ Every push to `main` builds the APK with GitHub Actions and publishes it as a re
 | `CastService.kt` | Foreground service, MediaSession, notification, polling the TV |
 | `MainActivity.kt` | Choose file, find TV, cast |
 | `CastScreen.kt`, `Theme.kt` | Material 3 Expressive UI and theme |
+
+## License
+
+MIT. See [LICENSE](LICENSE).
