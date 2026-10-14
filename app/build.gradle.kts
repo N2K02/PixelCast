@@ -60,4 +60,6 @@ dependencies {
     // Material 3 Expressive (MaterialExpressiveTheme, expressive shapes/motion/components)
     implementation("androidx.compose.material3:material3:1.5.0-beta01")
     implementation("androidx.activity:activity-compose:1.11.0")
+    // In-app updates (AppUpdater)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 }

@@ -96,6 +96,7 @@ fun CastScreen(state: UiState, actions: UiActions) {
             ),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            item { UpdateCard() }
             item {
                 AnimatedVisibility(visible = state.status.active || state.status.message != "Not casting") {
                     NowPlayingCard(state.status, actions)
@@ -130,6 +131,7 @@ fun CastScreen(state: UiState, actions: UiActions) {
                     modifier = Modifier.padding(horizontal = 4.dp),
                 )
             }
+            item { UpdateFooter("PixelCast") }
         }
     }
 }

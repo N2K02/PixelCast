@@ -47,6 +47,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        AppUpdater.init(this, "N2K02/PixelCast", "PixelCast")
         restoreLast()
         handleShare(intent)
         if (Build.VERSION.SDK_INT >= 33 &&
@@ -92,6 +93,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        AppUpdater.onResume(this)
         CastService.listener = { castStatus = it }
         castStatus = CastService.status
     }

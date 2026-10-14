@@ -14,6 +14,9 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- usesCleartextTraffic: the TV and our local media server only speak plain HTTP on the LAN -->
+    <!-- Installs its own updates (Android asks the user first) -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <application
         android:allowBackup="false"
         android:icon="@drawable/ic_launcher"
@@ -42,5 +45,10 @@
             android:name=".CastService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
+
+        <!-- Result of installing an app update -->
+        <receiver
+            android:name=".UpdateReceiver"
+            android:exported="false" />
     </application>
 </manifest>
