@@ -85,7 +85,7 @@ fun UpdateCard(modifier: Modifier = Modifier) {
     var diagnosticsVisible by remember { mutableStateOf(false) }
     LaunchedEffect(state) { if (state !is AppUpdater.State.Failed) diagnosticsVisible = false }
     val activity = LocalContext.current.activity()
-    val visible = state is AppUpdater.State.Available || state is AppUpdater.State.Downloading ||
+    val visible = state is AppUpdater.State.Checking || state is AppUpdater.State.Available || state is AppUpdater.State.Downloading ||
         state is AppUpdater.State.NeedsPermission || state is AppUpdater.State.Ready ||
         state is AppUpdater.State.Failed
     AnimatedVisibility(visible = visible, modifier = modifier) {
@@ -99,6 +99,11 @@ fun UpdateCard(modifier: Modifier = Modifier) {
         ) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 when (val s = state) {
+                    is AppUpdater.State.Checking -> {
+                        Title("Checking for updates…")
+                        LinearProgressIndicator(Modifier.fillMaxWidth())
+                        Text("Contacting GitHub for the latest release.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     is AppUpdater.State.Available -> {
                         Title("Update available: ${s.release.versionName}")
                         Notes(s.release)
