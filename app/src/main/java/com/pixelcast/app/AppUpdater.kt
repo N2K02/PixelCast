@@ -75,7 +75,7 @@ object AppUpdater {
         data class NeedsPermission(val release: Release) : State
         /** Downloaded and checked; tap Install to open Android's installer (again). */
         data class Ready(val release: Release) : State
-        data class Failed(val message: String, val release: Release?) : State
+        data class Failed(val message: String, val release: Release?, val diagnostics: String = "") : State
     }
 
     private val _state = MutableStateFlow<State>(State.Idle)
@@ -120,7 +120,7 @@ object AppUpdater {
             prefs.edit().putLong("lastCheck", System.currentTimeMillis()).apply()
             val release = result.getOrNull()
             _state.value = when {
-                result.isFailure -> if (manual) State.Failed("Couldn't reach GitHub. Check your connection.", null) else State.Idle
+                result.isFailure -> if (manual) State.Failed("Couldn't reach GitHub. Check the details for more information.", null, diagnostic(result.exceptionOrNull(), null)) else State.Idle
                 release == null || release.versionCode <= installedVersionCode -> if (manual) State.UpToDate(true) else State.Idle
                 !manual && prefs.getString("skipped", null) == release.tag -> State.Idle
                 else -> State.Available(release)
@@ -155,7 +155,7 @@ object AppUpdater {
                 }
             } catch (e: Exception) {
                 file.delete()
-                _state.value = State.Failed("Download failed. Check your connection and try again.", release)
+                _state.value = State.Failed("Download failed. Check the details for more information.", release, diagnostic(e, release))
                 return@launch
             }
             if (canInstall()) openInstaller(release) else _state.value = State.NeedsPermission(release)
@@ -211,7 +211,7 @@ object AppUpdater {
             c.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
             c.setRequestProperty("User-Agent", "$appName-updater (Android)")
             if (c.responseCode == 404) return@withContext null
-            if (c.responseCode != 200) throw IOException("HTTP ${c.responseCode}")
+            if (c.responseCode != 200) throw httpError(c, c.responseCode)
             val o = JSONObject(c.inputStream.bufferedReader().use { it.readText() })
             if (o.optBoolean("draft") || o.optBoolean("prerelease")) return@withContext null
             val tag = o.optString("tag_name")
@@ -283,7 +283,7 @@ object AppUpdater {
                 if (url.protocol != "https") throw IOException("Insecure download link")
                 continue
             }
-            if (code != 200) throw IOException("HTTP $code")
+            if (code != 200) throw httpError(c, code)
             break
         }
         try {
@@ -344,7 +344,26 @@ object AppUpdater {
 
     private fun canInstall() = app.packageManager.canRequestPackageInstalls()
 
-    // ---------------------------------------------------------------- package info helpers
+    
+    private fun diagnostic(error: Throwable?, release: Release?): String = buildString {
+        appendLine("App: $appName")
+        appendLine("Repository: $repo")
+        appendLine("Installed version: $installedVersionName")
+        appendLine("Target version: \${release?.versionName ?: "unknown"}")
+        appendLine("Release API URL: https://api.github.com/repos/$repo/releases/latest")
+        appendLine("APK URL: \${release?.apkUrl ?: "not available"}")
+        appendLine("Exception: \${error?.javaClass?.name ?: "unknown"}")
+        appendLine("Message: \${error?.message ?: "No exception message"}")
+    }.trim()
+
+    private fun httpError(connection: HttpURLConnection, code: Int): IOException {
+        val body = runCatching {
+            (connection.errorStream ?: return@runCatching "").bufferedReader().use { it.readText() }
+        }.getOrDefault("")
+        return IOException("HTTP $code at \${connection.url}" + if (body.isBlank()) "" else "\nResponse body: \${body.take(2000)}")
+    }
+
+// ---------------------------------------------------------------- package info helpers
 
     @Suppress("DEPRECATION")
     private fun versionCodeOf(info: PackageInfo): Long =
