@@ -12,6 +12,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -281,6 +285,29 @@ fun UpdateFooterBar(appName: String, modifier: Modifier = Modifier) {
                     ) { Text("Check for updates", style = MaterialTheme.typography.labelMedium) }
                 }
             }
+        }
+    }
+}
+
+
+/**
+ * The Scaffold's bottomBar: the update footer, plus the navigation bar's height once the footer
+ * has slid away. (While the footer shows, it keeps that space free itself.) Without this, the
+ * last items of the list end up behind the navigation keys of phones with a static navigation bar.
+ */
+@Composable
+fun UpdateBottomBar(appName: String) {
+    val state by AppUpdater.state.collectAsState()
+    val busy = state is AppUpdater.State.Downloading || state is AppUpdater.State.Ready ||
+        state is AppUpdater.State.NeedsPermission
+    Column {
+        UpdateFooterBar(appName)
+        AnimatedVisibility(
+            visible = !(FooterScroll.visible || busy),
+            enter = expandVertically(expandFrom = Alignment.Top),
+            exit = shrinkVertically(shrinkTowards = Alignment.Top),
+        ) {
+            Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
         }
     }
 }
