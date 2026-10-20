@@ -16,29 +16,44 @@ import java.util.UUID
 import kotlin.concurrent.thread
 
 /**
- * Tiny HTTP server that streams one local file (a content:// Uri) to the TV.
- * Supports Range requests so the TV can seek, and sends the DLNA headers Samsung expects.
+ * Tiny HTTP server that streams one local file (a content:// Uri) to the TV, plus an optional
+ * .srt subtitle file. Supports Range requests so the TV can seek, and sends the DLNA headers
+ * Samsung expects.
  */
 class MediaHttpServer(context: Context) {
     private val resolver = context.applicationContext.contentResolver
 
-    private class Served(val uri: Uri, val mime: String, val path: String)
+    private class Served(
+        val uri: Uri,
+        val mime: String,
+        val path: String,
+        val subtitle: Uri?,
+        val subtitlePath: String?,
+        val subtitleUrl: String?,
+    )
+
+    /** Where the TV finds the media and (if any) its subtitles. */
+    class Urls(val media: String, val subtitle: String?)
 
     @Volatile private var served: Served? = null
     @Volatile private var server: ServerSocket? = null
 
-    /** Starts serving [uri] and returns the URL the TV should load. */
+    /** Starts serving [uri] (and [subtitle], if given) and returns the URLs the TV should load. */
     @Synchronized
-    fun serve(uri: Uri, mime: String, tvHost: String): String {
+    fun serve(uri: Uri, mime: String, tvHost: String, subtitle: Uri? = null): Urls {
         val socket = server ?: ServerSocket(0).also { s ->
             server = s
             thread(isDaemon = true, name = "tvcast-http") { acceptLoop(s) }
         }
         val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mime) ?: "bin"
         // A fresh path per cast stops the TV from reusing a cached earlier file.
-        val path = "/media/${UUID.randomUUID()}.$ext"
-        served = Served(uri, mime, path)
-        return "http://${localIpFacing(tvHost)}:${socket.localPort}$path"
+        val id = UUID.randomUUID()
+        val path = "/media/$id.$ext"
+        val subtitlePath = subtitle?.let { "/media/$id.srt" }
+        val base = "http://${localIpFacing(tvHost)}:${socket.localPort}"
+        val subtitleUrl = subtitlePath?.let { base + it }
+        served = Served(uri, mime, path, subtitle, subtitlePath, subtitleUrl)
+        return Urls(base + path, subtitleUrl)
     }
 
     @Synchronized
@@ -79,12 +94,18 @@ class MediaHttpServer(context: Context) {
                 val path = parts.getOrNull(1).orEmpty()
 
                 val current = served
-                if (current == null || path != current.path || (method != "GET" && method != "HEAD")) {
-                    out.write(simple("404 Not Found"))
-                    out.flush()
-                    return
+                when {
+                    current == null || (method != "GET" && method != "HEAD") -> {
+                        out.write(simple("404 Not Found"))
+                        out.flush()
+                    }
+                    path == current.path -> stream(current, method, headers["range"], out)
+                    path == current.subtitlePath -> sendSubtitle(current, method, out)
+                    else -> {
+                        out.write(simple("404 Not Found"))
+                        out.flush()
+                    }
                 }
-                stream(current, method, headers["range"], out)
             }
         } catch (e: IOException) {
             // Normal when the TV seeks or stops: it just drops the connection.
@@ -131,6 +152,8 @@ class MediaHttpServer(context: Context) {
                 append("Accept-Ranges: bytes\r\n")
                 append("transferMode.dlna.org: Streaming\r\n")
                 append("contentFeatures.dlna.org: ${AvTransport.DLNA_FEATURES}\r\n")
+                // Samsung TVs ask for this ("getCaptionInfo.sec: 1") to find the subtitles.
+                item.subtitleUrl?.let { append("CaptionInfo.sec: $it\r\n") }
                 append("Server: Android UPnP/1.0 DLNADOC/1.50 TvCast/0.1\r\n")
                 append("Connection: close\r\n\r\n")
             }
@@ -152,6 +175,38 @@ class MediaHttpServer(context: Context) {
         }
     }
 
+    private fun sendSubtitle(item: Served, method: String, out: BufferedOutputStream) {
+        val bytes = item.subtitle?.let { uri ->
+            runCatching {
+                resolver.openInputStream(uri)?.use { ins ->
+                    // Subtitles are small; refuse anything that clearly isn't one.
+                    val data = java.io.ByteArrayOutputStream()
+                    val buf = ByteArray(16 * 1024)
+                    while (data.size() <= MAX_SUBTITLE_BYTES) {
+                        val n = ins.read(buf)
+                        if (n < 0) break
+                        data.write(buf, 0, n)
+                    }
+                    data.toByteArray().takeIf { it.size <= MAX_SUBTITLE_BYTES }
+                }
+            }.getOrNull()
+        }
+        if (bytes == null) {
+            out.write(simple("404 Not Found"))
+            out.flush()
+            return
+        }
+        val head = "HTTP/1.1 200 OK\r\n" +
+            "Content-Type: text/srt\r\n" +
+            "Content-Length: ${bytes.size}\r\n" +
+            "transferMode.dlna.org: Background\r\n" +
+            "Access-Control-Allow-Origin: *\r\n" +
+            "Connection: close\r\n\r\n"
+        out.write(head.toByteArray(Charsets.ISO_8859_1))
+        if (method == "GET") out.write(bytes)
+        out.flush()
+    }
+
     private fun simple(status: String) =
         "HTTP/1.1 $status\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray()
 
@@ -167,6 +222,8 @@ class MediaHttpServer(context: Context) {
     }
 
     companion object {
+        private const val MAX_SUBTITLE_BYTES = 4 * 1024 * 1024
+
         /** The phone's IP on the interface that routes to the TV (no packets are sent). */
         fun localIpFacing(host: String): String =
             DatagramSocket().use {

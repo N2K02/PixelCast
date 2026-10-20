@@ -26,6 +26,7 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.ListItem
@@ -56,6 +57,7 @@ import java.net.URL
 data class UiState(
     val mediaTitle: String?,
     val mediaMime: String,
+    val subtitleName: String?,
     val tvs: List<Renderer>,
     val selected: Renderer?,
     val searching: Boolean,
@@ -65,6 +67,8 @@ data class UiState(
 
 class UiActions(
     val pickMedia: () -> Unit,
+    val pickSubtitle: () -> Unit,
+    val clearSubtitle: () -> Unit,
     val findTvs: () -> Unit,
     val selectTv: (Renderer) -> Unit,
     val cast: () -> Unit,
@@ -73,6 +77,8 @@ class UiActions(
     val forward: () -> Unit,
     val stop: () -> Unit,
     val seekTo: (Long) -> Unit,
+    val setVolume: (Int) -> Unit,
+    val toggleMute: () -> Unit,
 )
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -124,7 +130,8 @@ fun CastScreen(state: UiState, actions: UiActions) {
             }
             item {
                 Text(
-                    "While casting, the same controls are in your notification shade and on the lock screen. " +
+                    "While casting, the same controls are in your notification shade and on the lock screen, " +
+                        "and your phone's volume buttons change the TV's volume. " +
                         "MP4 (H.264/AAC) videos and MP3 songs work best. You can also share a video from " +
                         "Files or Photos straight to PixelCast.",
                     style = MaterialTheme.typography.bodyMedium,
@@ -224,7 +231,44 @@ private fun NowPlayingCard(status: CastService.Status, actions: UiActions) {
                     modifier = Modifier.size(56.dp),
                 ) { Icon(painterResource(R.drawable.ic_stop), contentDescription = "Stop casting") }
             }
+
+            if (status.active && status.volume >= 0) {
+                VolumeRow(status, actions)
+            }
         }
+    }
+}
+
+/** TV volume: mute button and a slider that sets the volume when you let go. */
+@Composable
+private fun VolumeRow(status: CastService.Status, actions: UiActions) {
+    var dragging by remember { mutableStateOf<Float?>(null) }
+    val shown = dragging ?: status.volume.toFloat()
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+    ) {
+        IconButton(onClick = actions.toggleMute) {
+            Icon(
+                painterResource(if (status.muted) R.drawable.ic_volume_off else R.drawable.ic_volume_up),
+                contentDescription = if (status.muted) "Unmute TV" else "Mute TV",
+            )
+        }
+        Slider(
+            value = shown,
+            onValueChange = { dragging = it },
+            onValueChangeFinished = {
+                dragging?.let { actions.setVolume(it.toInt()) }
+                dragging = null
+            },
+            valueRange = 0f..RenderingControl.MAX_VOLUME.toFloat(),
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            if (status.muted && dragging == null) "Muted" else shown.toInt().toString(),
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.padding(start = 8.dp).width(48.dp),
+        )
     }
 }
 
@@ -246,6 +290,30 @@ private fun MediaCard(state: UiState, actions: UiActions) {
             },
             colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         )
+        // Subtitles only make sense for videos.
+        if (state.mediaTitle != null && !state.mediaMime.startsWith("audio")) {
+            ListItem(
+                leadingContent = { Icon(painterResource(R.drawable.ic_subtitles), contentDescription = null) },
+                headlineContent = {
+                    Text(state.subtitleName ?: "No subtitles", maxLines = 2, overflow = TextOverflow.Ellipsis)
+                },
+                supportingContent = {
+                    Text(if (state.subtitleName == null) "Optional .srt file" else "Shown on the TV")
+                },
+                trailingContent = {
+                    if (state.subtitleName == null) {
+                        FilledTonalButton(onClick = actions.pickSubtitle, shapes = ButtonDefaults.shapes()) {
+                            Text("Add")
+                        }
+                    } else {
+                        OutlinedButton(onClick = actions.clearSubtitle, shapes = ButtonDefaults.shapes()) {
+                            Text("Remove")
+                        }
+                    }
+                },
+                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            )
+        }
         Spacer(Modifier.height(8.dp))
     }
 }

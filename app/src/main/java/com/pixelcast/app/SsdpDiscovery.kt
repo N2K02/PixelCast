@@ -15,8 +15,11 @@ import java.net.InetSocketAddress
 import java.net.SocketTimeoutException
 import java.net.URL
 
-/** A DLNA media renderer (e.g. a Samsung TV) that we can send media to. */
-data class Renderer(val name: String, val controlUrl: String)
+/**
+ * A DLNA media renderer (e.g. a Samsung TV) that we can send media to.
+ * [renderingUrl] is its RenderingControl service (volume and mute), if it has one.
+ */
+data class Renderer(val name: String, val controlUrl: String, val renderingUrl: String? = null)
 
 /**
  * Finds DLNA renderers on the Wi-Fi network using SSDP (UPnP discovery).
@@ -85,7 +88,7 @@ object SsdpDiscovery {
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
 
-    /** Reads the device description XML and finds the AVTransport control URL. */
+    /** Reads the device description XML and finds the AVTransport and RenderingControl URLs. */
     private fun describe(location: String): Renderer? {
         val xml = httpGet(location)
         val parser = Xml.newPullParser()
@@ -97,6 +100,7 @@ object SsdpDiscovery {
         var serviceType = ""
         var controlUrl = ""
         var avTransportControl: String? = null
+        var renderingControl: String? = null
 
         var event = parser.eventType
         while (event != XmlPullParser.END_DOCUMENT) {
@@ -114,6 +118,9 @@ object SsdpDiscovery {
                     if (avTransportControl == null && serviceType.contains("AVTransport")) {
                         avTransportControl = controlUrl
                     }
+                    if (renderingControl == null && serviceType.contains("RenderingControl")) {
+                        renderingControl = controlUrl
+                    }
                     inService = false
                 }
             }
@@ -124,6 +131,7 @@ object SsdpDiscovery {
         return Renderer(
             name = friendlyName ?: base.host,
             controlUrl = URL(base, control).toString(),
+            renderingUrl = renderingControl?.takeIf { it.isNotEmpty() }?.let { URL(base, it).toString() },
         )
     }
 

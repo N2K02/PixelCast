@@ -8,7 +8,10 @@ import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.drawable.Icon
+import android.media.AudioAttributes
+import android.media.AudioManager
 import android.media.MediaMetadata
+import android.media.VolumeProvider
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.net.Uri
@@ -25,9 +28,10 @@ import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 
 /**
- * Owns one cast session: serves the file to the TV, sends it DLNA commands,
- * polls the TV for position, and shows the media notification
- * (play/pause, seek bar, back/forward 10 s, stop).
+ * Owns one cast session: serves the file (and subtitles) to the TV, sends it DLNA commands,
+ * polls the TV for position and volume, and shows the media notification
+ * (play/pause, seek bar, back/forward 10 s, stop). While casting, the phone's volume
+ * buttons change the TV's volume.
  */
 class CastService : Service() {
 
@@ -40,6 +44,9 @@ class CastService : Service() {
         val positionMs: Long = 0,
         val durationMs: Long = 0,
         val message: String = "Not casting",
+        /** TV volume 0–100, or -1 if the TV doesn't let us change it. */
+        val volume: Int = -1,
+        val muted: Boolean = false,
     )
 
     companion object {
@@ -53,6 +60,8 @@ class CastService : Service() {
         const val ACTION_FORWARD = "com.pixelcast.FORWARD"
         const val ACTION_SEEK = "com.pixelcast.SEEK"
         const val ACTION_STOP = "com.pixelcast.STOP"
+        const val ACTION_VOLUME = "com.pixelcast.VOLUME"
+        const val ACTION_MUTE = "com.pixelcast.MUTE"
 
         const val EXTRA_URI = "uri"
         const val EXTRA_MIME = "mime"
@@ -60,10 +69,15 @@ class CastService : Service() {
         const val EXTRA_CONTROL_URL = "controlUrl"
         const val EXTRA_TV_NAME = "tvName"
         const val EXTRA_POSITION = "position"
+        const val EXTRA_SUBTITLE_URI = "subtitleUri"
+        const val EXTRA_RENDERING_URL = "renderingUrl"
+        const val EXTRA_VOLUME = "volume"
 
         private const val CHANNEL_ID = "cast"
         private const val NOTIFICATION_ID = 1
         private const val SKIP_MS = 10_000L
+        private const val VOLUME_STEP = 2
+        private const val VOLUME_POLL_EVERY = 5 // seconds
 
         private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -102,6 +116,15 @@ class CastService : Service() {
     private var message = ""
     private var error = false
 
+    // TV volume (RenderingControl). volume = -1 means the TV doesn't support it.
+    private var rendering: RenderingControl? = null
+    private var volumeProvider: VolumeProvider? = null
+    private var volume = -1
+    private var muted = false
+    private var volumeDirty = false   // a new volume is waiting to be sent
+    private var holdVolumeUntil = 0L  // ignore stale volume reads right after a change
+    private var polls = 0
+
     private var shownMeta: Pair<String, Long>? = null
     private var shownNotification: Triple<Boolean, String, String>? = null
 
@@ -139,7 +162,9 @@ class CastService : Service() {
                 val newTitle = intent.getStringExtra(EXTRA_TITLE) ?: "Video"
                 val controlUrl = intent.getStringExtra(EXTRA_CONTROL_URL) ?: return START_NOT_STICKY
                 val newTv = intent.getStringExtra(EXTRA_TV_NAME) ?: "TV"
-                io.execute { load(uri, mime, newTitle, controlUrl, newTv) }
+                val subtitle = intent.getStringExtra(EXTRA_SUBTITLE_URI)?.let(Uri::parse)
+                val renderingUrl = intent.getStringExtra(EXTRA_RENDERING_URL)
+                io.execute { load(uri, mime, newTitle, controlUrl, newTv, subtitle, renderingUrl) }
             }
             ACTION_PLAY -> io.execute { play() }
             ACTION_PAUSE -> io.execute { pause() }
@@ -151,9 +176,23 @@ class CastService : Service() {
                 io.execute { seekTo(target) }
             }
             ACTION_STOP -> stopCasting()
-            else -> io.execute { if (transport == null) mainHandler.post { stopSelf() } }
+            ACTION_VOLUME -> {
+                val target = intent.getIntExtra(EXTRA_VOLUME, -1)
+                io.execute { if (target >= 0) changeVolume(target) }
+                stopIfIdle()
+            }
+            ACTION_MUTE -> {
+                io.execute { setMuted(!muted) }
+                stopIfIdle()
+            }
+            else -> stopIfIdle()
         }
         return START_NOT_STICKY
+    }
+
+    /** Started only to deliver a command, with nothing casting: don't linger. */
+    private fun stopIfIdle() {
+        io.execute { if (transport == null) mainHandler.post { stopSelf() } }
     }
 
     /** Called by the system media controls (notification, lock screen, Bluetooth buttons). */
@@ -175,7 +214,15 @@ class CastService : Service() {
 
     // ---------------------------------------------------------------- DLNA (io thread only)
 
-    private fun load(uri: Uri, mime: String, newTitle: String, controlUrl: String, newTv: String) {
+    private fun load(
+        uri: Uri,
+        mime: String,
+        newTitle: String,
+        controlUrl: String,
+        newTv: String,
+        subtitle: Uri?,
+        renderingUrl: String?,
+    ) {
         transport?.let { old -> runCatching { old.stop() } }
         val t = AvTransport(controlUrl)
         transport = t
@@ -186,23 +233,27 @@ class CastService : Service() {
         ended = false
         failures = 0
         error = false
+        rendering = null
+        volume = -1
         durationMs = 0
         markPosition(0)
         update("Connecting to $tvName…")
         try {
             acquireLocks()
-            val url = server.serve(uri, mime, t.host)
-            Log.i(TAG, "Casting $url to $controlUrl")
-            t.setUri(url, title, mime)
+            val urls = server.serve(uri, mime, t.host, subtitle)
+            Log.i(TAG, "Casting ${urls.media} to $controlUrl")
+            t.setUri(urls.media, title, mime, urls.subtitle)
             // Some TVs need a moment after SetAVTransportURI before they accept Play.
             retry(times = 4, delayMs = 700) { t.play() }
             playing = true
             markPosition(0)
             holdPolling(3000)
             startPolling()
+            setUpVolume(renderingUrl)
             update("Playing on $tvName")
         } catch (e: Exception) {
             Log.w(TAG, "Cast failed", e)
+            useLocalVolume()
             fail("Couldn't play on $tvName: ${e.message}")
         }
     }
@@ -240,6 +291,118 @@ class CastService : Service() {
         }
     }
 
+    // ---------------------------------------------------------------- TV volume (io thread only)
+
+    /** Reads the TV's volume and, if it has one, hands the phone's volume buttons to the TV. */
+    private fun setUpVolume(renderingUrl: String?) {
+        val r = renderingUrl?.let(::RenderingControl)
+        val current = r?.let { runCatching { it.volume() }.getOrNull() }
+        if (r == null || current == null) {
+            rendering = null
+            volume = -1
+            useLocalVolume()
+            return
+        }
+        rendering = r
+        volume = current
+        muted = runCatching { r.muted() }.getOrNull() ?: false
+        if (volumeProvider == null) {
+            val provider = object : VolumeProvider(
+                VOLUME_CONTROL_ABSOLUTE, RenderingControl.MAX_VOLUME, current,
+            ) {
+                override fun onSetVolumeTo(volume: Int) {
+                    io.execute { changeVolume(volume) }
+                }
+
+                override fun onAdjustVolume(direction: Int) {
+                    io.execute {
+                        when (direction) {
+                            AudioManager.ADJUST_RAISE -> changeVolume(volume + VOLUME_STEP)
+                            AudioManager.ADJUST_LOWER -> changeVolume(volume - VOLUME_STEP)
+                            AudioManager.ADJUST_MUTE -> setMuted(true)
+                            AudioManager.ADJUST_UNMUTE -> setMuted(false)
+                            AudioManager.ADJUST_TOGGLE_MUTE -> setMuted(!muted)
+                        }
+                    }
+                }
+            }
+            volumeProvider = provider
+            session.setPlaybackToRemote(provider)
+        } else {
+            volumeProvider?.currentVolume = current
+        }
+    }
+
+    private fun useLocalVolume() {
+        if (volumeProvider == null) return
+        volumeProvider = null
+        session.setPlaybackToLocal(
+            AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
+                .build()
+        )
+    }
+
+    /**
+     * Shows the new volume straight away and sends it to the TV once the queue is clear,
+     * so holding a volume button doesn't pile up one TV request per step.
+     */
+    private fun changeVolume(target: Int) {
+        if (rendering == null) return
+        volume = target.coerceIn(0, RenderingControl.MAX_VOLUME)
+        volumeProvider?.currentVolume = volume
+        holdVolumeUntil = SystemClock.elapsedRealtime() + 3000
+        update(null)
+        if (!volumeDirty) {
+            volumeDirty = true
+            io.execute { sendVolume() }
+        }
+    }
+
+    private fun sendVolume() {
+        volumeDirty = false
+        val r = rendering ?: return
+        try {
+            r.setVolume(volume)
+            // Turning the volume up or down also turns mute off, like the TV remote.
+            if (muted) {
+                r.setMuted(false)
+                muted = false
+                update(null)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "volume failed", e)
+            update("TV didn't accept the volume change")
+        }
+    }
+
+    private fun setMuted(mute: Boolean) {
+        val r = rendering ?: return
+        try {
+            r.setMuted(mute)
+            muted = mute
+            holdVolumeUntil = SystemClock.elapsedRealtime() + 3000
+            update(null)
+        } catch (e: Exception) {
+            Log.w(TAG, "mute failed", e)
+            update("TV didn't accept mute")
+        }
+    }
+
+    /** Picks up volume changes made with the TV remote. */
+    private fun pollVolume() {
+        val r = rendering ?: return
+        if (volumeDirty || SystemClock.elapsedRealtime() < holdVolumeUntil) return
+        runCatching {
+            r.volume()?.let { v ->
+                volume = v
+                volumeProvider?.currentVolume = v
+            }
+            r.muted()?.let { muted = it }
+        }
+    }
+
     private fun command(name: String, block: () -> Unit) {
         try {
             block()
@@ -272,6 +435,7 @@ class CastService : Service() {
                 }
             }
             if (pos != null) markPosition(pos)
+            if (++polls % VOLUME_POLL_EVERY == 0) pollVolume()
             update(newMessage)
         } catch (e: Exception) {
             if (++failures >= 5) fail("Lost connection to $tvName")
@@ -325,6 +489,9 @@ class CastService : Service() {
             pollTask = null
             transport?.let { t -> runCatching { t.stop() } }
             transport = null
+            rendering = null
+            volume = -1
+            useLocalVolume()
             playing = false
             server.shutdown()
             releaseLocks()
@@ -424,6 +591,8 @@ class CastService : Service() {
                 positionMs = position,
                 durationMs = durationMs,
                 message = message,
+                volume = if (transport != null) volume else -1,
+                muted = muted,
             )
         )
     }

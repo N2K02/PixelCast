@@ -13,7 +13,9 @@ Pixels speak Google Cast; Samsung TVs don't. Both speak **DLNA/UPnP**, so PixelC
 1. finds the TV on your Wi-Fi (SSDP discovery),
 2. serves the file from the phone over a tiny built-in HTTP server (with seeking support),
 3. tells the TV to play it (UPnP AVTransport), and
-4. shows a media notification with **play/pause, a seek bar, back/forward 10 s and stop**.
+4. shows a media notification with **play/pause, a seek bar, back/forward 10 s and stop**,
+5. lets the phone's **volume buttons** (and a slider in the app) change the **TV's volume** and mute, and
+6. sends an optional **.srt subtitle** file along with a video.
 
 The TV decodes the file itself, so quality is full and the phone barely works.
 
@@ -23,7 +25,8 @@ The TV decodes the file itself, so quality is full and the phone barely works.
 2. Turn the TV on. Phone and TV must be on the **same Wi-Fi**.
 3. Open PixelCast → **Choose file** (or *Share* a video from Files/Photos to PixelCast).
 4. It searches for TVs automatically → pick your Samsung → **Cast**.
-5. Pull down the notification shade (or lock screen) for the controls.
+5. Pull down the notification shade (or lock screen) for the controls. The phone's volume buttons now change the TV's volume.
+6. Optional: under the video, tap **Add** next to *No subtitles* and pick an `.srt` file before casting.
 
 ## Notes & troubleshooting
 
@@ -33,8 +36,10 @@ The TV decodes the file itself, so quality is full and the phone barely works.
 | TV shows a "allow device?" prompt | Accept it once on the TV remote. |
 | TV says file not supported | Use MP4 (H.264 video + AAC audio) or MP3. MKV/HEVC/DTS depend on the TV model. |
 | Stops when screen turns off | Settings → Apps → PixelCast → Battery → **Unrestricted**. |
+| No volume slider in the app | The TV doesn't offer volume control over DLNA. Use the TV remote. |
+| Subtitles don't show | Turn subtitles on in the TV's player menu. Samsung TVs read them; other brands vary. Use a UTF-8 `.srt` file. |
 
-Not supported (yet): live screen mirroring, subtitles, playlists, TV volume.
+Not supported (yet): live screen mirroring, playlists, subtitle formats other than `.srt`.
 
 ## Updates
 
@@ -55,10 +60,11 @@ Every push to `main` builds the APK with GitHub Actions and publishes it as a re
 
 | File | What it does |
 |---|---|
-| `SsdpDiscovery.kt` | Finds DLNA renderers and their AVTransport control URL |
-| `AvTransport.kt` | SOAP commands: SetAVTransportURI, Play, Pause, Seek, Stop, position/state |
-| `MediaHttpServer.kt` | Streams the chosen file to the TV with HTTP Range + DLNA headers |
-| `CastService.kt` | Foreground service, MediaSession, notification, polling the TV |
+| `SsdpDiscovery.kt` | Finds DLNA renderers and their AVTransport and RenderingControl URLs |
+| `AvTransport.kt` | SOAP commands: SetAVTransportURI (with subtitles), Play, Pause, Seek, Stop, position/state |
+| `RenderingControl.kt` | TV volume and mute |
+| `MediaHttpServer.kt` | Streams the chosen file (and .srt subtitles) to the TV with HTTP Range + DLNA headers |
+| `CastService.kt` | Foreground service, MediaSession, notification, polling the TV, volume buttons → TV volume |
 | `MainActivity.kt` | Choose file, find TV, cast |
 | `CastScreen.kt`, `Theme.kt` | Material 3 Expressive UI and theme |
 

@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -24,6 +25,8 @@ class MainActivity : ComponentActivity() {
     private var mediaUri: Uri? = null
     private var mediaTitle by mutableStateOf<String?>(null)
     private var mediaMime by mutableStateOf("video/mp4")
+    private var subtitleUri: Uri? = null
+    private var subtitleName by mutableStateOf<String?>(null)
 
     private val tvs = mutableStateListOf<Renderer>()
     private var selected by mutableStateOf<Renderer?>(null)
@@ -39,6 +42,10 @@ class MainActivity : ComponentActivity() {
             }
             setMedia(uri, remember = true)
         }
+    }
+
+    private val pickSubtitle = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) setSubtitle(uri)
     }
 
     private val notificationPermission =
@@ -59,6 +66,9 @@ class MainActivity : ComponentActivity() {
 
         val actions = UiActions(
             pickMedia = { pickMedia.launch(arrayOf("video/*", "audio/*")) },
+            // .srt files have no reliable MIME type, so show everything and check the name.
+            pickSubtitle = { pickSubtitle.launch(arrayOf("*/*")) },
+            clearSubtitle = { clearSubtitle() },
             findTvs = ::findTvs,
             selectTv = { selected = it },
             cast = ::cast,
@@ -67,6 +77,14 @@ class MainActivity : ComponentActivity() {
             forward = { send(CastService.ACTION_FORWARD) },
             stop = { send(CastService.ACTION_STOP) },
             seekTo = { send(CastService.ACTION_SEEK, it) },
+            setVolume = { volume ->
+                startService(
+                    Intent(this, CastService::class.java)
+                        .setAction(CastService.ACTION_VOLUME)
+                        .putExtra(CastService.EXTRA_VOLUME, volume)
+                )
+            },
+            toggleMute = { send(CastService.ACTION_MUTE) },
         )
         setContent {
             PixelCastTheme {
@@ -74,6 +92,7 @@ class MainActivity : ComponentActivity() {
                     UiState(
                         mediaTitle = mediaTitle,
                         mediaMime = mediaMime,
+                        subtitleName = subtitleName,
                         tvs = tvs.toList(),
                         selected = selected,
                         searching = searching,
@@ -118,6 +137,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun setMedia(uri: Uri, remember: Boolean) {
+        // Subtitles belong to one video. A shared (not remembered) video leaves the
+        // remembered video's subtitles saved for next time.
+        if (uri != mediaUri) clearSubtitle(forget = remember)
         mediaUri = uri
         mediaMime = contentResolver.getType(uri) ?: "video/mp4"
         mediaTitle = displayName(uri)
@@ -128,6 +150,50 @@ class MainActivity : ComponentActivity() {
                 .putString("mediaTitle", mediaTitle)
                 .apply()
         }
+    }
+
+    private fun setSubtitle(uri: Uri) {
+        val name = displayName(uri)
+        if (!name.endsWith(".srt", ignoreCase = true)) {
+            Toast.makeText(this, "Choose an .srt subtitle file", Toast.LENGTH_LONG).show()
+            return
+        }
+        subtitleUri = uri
+        subtitleName = name
+        // Remember subtitles only for the remembered video (not for one shared in).
+        val rememberedVideo = mediaUri != null && prefs.getString("mediaUri", null) == mediaUri.toString()
+        if (rememberedVideo && runCatching {
+                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }.isSuccess
+        ) {
+            prefs.getString("subtitleUri", null)?.takeIf { it != uri.toString() }?.let { old ->
+                runCatching {
+                    contentResolver.releasePersistableUriPermission(
+                        Uri.parse(old), Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                    )
+                }
+            }
+            prefs.edit()
+                .putString("subtitleUri", uri.toString())
+                .putString("subtitleName", name)
+                .putString("subtitleFor", mediaUri?.toString())
+                .apply()
+        }
+    }
+
+    private fun clearSubtitle(forget: Boolean = true) {
+        if (forget) {
+            prefs.getString("subtitleUri", null)?.let { old ->
+                runCatching {
+                    contentResolver.releasePersistableUriPermission(
+                        Uri.parse(old), Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                    )
+                }
+            }
+            prefs.edit().remove("subtitleUri").remove("subtitleName").remove("subtitleFor").apply()
+        }
+        subtitleUri = null
+        subtitleName = null
     }
 
     private fun displayName(uri: Uri): String =
@@ -147,7 +213,12 @@ class MainActivity : ComponentActivity() {
             val found = runCatching { SsdpDiscovery.discover(this) }.getOrDefault(emptyList())
             runOnUiThread {
                 searching = false
-                found.forEach { r -> if (tvs.none { it.controlUrl == r.controlUrl }) tvs += r }
+                found.forEach { r ->
+                    // Replace a remembered TV with the fresh answer (it may have new details).
+                    val i = tvs.indexOfFirst { it.controlUrl == r.controlUrl }
+                    if (i >= 0) tvs[i] = r else tvs += r
+                    if (selected?.controlUrl == r.controlUrl) selected = r
+                }
                 if (selected == null && tvs.size == 1) selected = tvs.first()
                 searchHint = when {
                     found.isNotEmpty() -> "Found ${found.size} TV(s)"
@@ -163,7 +234,11 @@ class MainActivity : ComponentActivity() {
     private fun cast() {
         val uri = mediaUri ?: return
         val tv = selected ?: return
-        prefs.edit().putString("tvName", tv.name).putString("tvControl", tv.controlUrl).apply()
+        prefs.edit()
+            .putString("tvName", tv.name)
+            .putString("tvControl", tv.controlUrl)
+            .putString("tvRendering", tv.renderingUrl)
+            .apply()
         startForegroundService(
             Intent(this, CastService::class.java)
                 .setAction(CastService.ACTION_CAST)
@@ -172,6 +247,8 @@ class MainActivity : ComponentActivity() {
                 .putExtra(CastService.EXTRA_TITLE, mediaTitle)
                 .putExtra(CastService.EXTRA_CONTROL_URL, tv.controlUrl)
                 .putExtra(CastService.EXTRA_TV_NAME, tv.name)
+                .putExtra(CastService.EXTRA_RENDERING_URL, tv.renderingUrl)
+                .putExtra(CastService.EXTRA_SUBTITLE_URI, subtitleUri?.toString())
         )
     }
 
@@ -189,14 +266,25 @@ class MainActivity : ComponentActivity() {
                 mediaUri = uri
                 mediaMime = prefs.getString("mediaMime", null) ?: "video/mp4"
                 mediaTitle = prefs.getString("mediaTitle", null) ?: "Video"
+                restoreSubtitle(saved)
             }
         }
         val name = prefs.getString("tvName", null)
         val control = prefs.getString("tvControl", null)
         if (name != null && control != null) {
-            val last = Renderer(name, control)
+            val last = Renderer(name, control, prefs.getString("tvRendering", null))
             tvs += last
             selected = last
+        }
+    }
+
+    private fun restoreSubtitle(forMedia: String) {
+        if (prefs.getString("subtitleFor", null) != forMedia) return
+        val saved = prefs.getString("subtitleUri", null) ?: return
+        val uri = Uri.parse(saved)
+        if (contentResolver.persistedUriPermissions.any { it.uri == uri && it.isReadPermission }) {
+            subtitleUri = uri
+            subtitleName = prefs.getString("subtitleName", null) ?: "Subtitles"
         }
     }
 }
