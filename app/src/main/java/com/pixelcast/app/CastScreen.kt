@@ -86,14 +86,14 @@ class UiActions(
 fun CastScreen(state: UiState, actions: UiActions) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     Scaffold(
-        modifier = Modifier.nestedScroll(FooterScroll.connection).nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
                 title = { Text("PixelCast") },
+                actions = { SettingsMenuButton() },
                 scrollBehavior = scrollBehavior,
             )
         },
-        bottomBar = { UpdateBottomBar("PixelCast") },
     ) { padding ->
         LazyColumn(
             contentPadding = PaddingValues(
