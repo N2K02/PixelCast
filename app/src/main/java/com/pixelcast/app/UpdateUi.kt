@@ -208,11 +208,17 @@ private fun Notes(release: AppUpdater.Release) {
 fun SettingsMenuButton() {
     var open by remember { mutableStateOf(false) }
     val state by AppUpdater.state.collectAsState()
+    val experimentalEnabled by AppUpdater.experimentalEnabled.collectAsState()
     Box {
         IconButton(onClick = { open = true }) {
             Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings")
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text(if (experimentalEnabled) "Experimental updates: on" else "Experimental updates: off") },
+                onClick = { open = false; AppUpdater.setExperimentalEnabled(!experimentalEnabled) },
+            )
+
             DropdownMenuItem(
                 text = {
                     Column {
