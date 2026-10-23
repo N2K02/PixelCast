@@ -102,48 +102,38 @@ private fun Notes(release: AppUpdater.Release) {
  * update status, and checks for updates when tapped (the update card on the screen shows the result).
  */
 @Composable
-fun SettingsMenuButton() {
+fun SettingsMenuButton(onOpenUpdates: () -> Unit) {
     var open by remember { mutableStateOf(false) }
-    val state by LiveUpdater.controller.status.collectAsState()
-    val experimentalEnabled by LiveUpdater.experimentalEnabled.collectAsState()
     Box {
         IconButton(onClick = { open = true }) {
             Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings")
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.clip(RoundedCornerShape(22.dp))) {
             DropdownMenuItem(
-                text = { Text(if (experimentalEnabled) "Experimental updates: on" else "Experimental updates: off") },
+                text = { Text("About & updates") },
                 leadingIcon = { Icon(painterResource(R.drawable.ic_system_update), contentDescription = null) },
-                onClick = { open = false; LiveUpdater.setExperimentalEnabled(!experimentalEnabled) },
-            )
-
-            DropdownMenuItem(
-                text = {
-                    Column {
-                        Text("Update")
-                        Text(
-                            when (val u = state) {
-                                is dev.n2k02.updater.UpdateStatus.Checking -> "Checking…"
-                                is dev.n2k02.updater.UpdateStatus.Available -> "Version ${u.release.tag} available"
-                                is dev.n2k02.updater.UpdateStatus.Downloading -> "Downloading…"
-                                is dev.n2k02.updater.UpdateStatus.Ready, is dev.n2k02.updater.UpdateStatus.NeedsInstallPermission -> "Ready to install"
-                                is dev.n2k02.updater.UpdateStatus.Current -> "Up to date · v${BuildConfig.VERSION_NAME}"
-                                else -> "v${BuildConfig.VERSION_NAME} · check for updates"
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                },
-                leadingIcon = { Icon(painterResource(R.drawable.ic_system_update), contentDescription = null) },
-                onClick = {
-                    open = false
-                    // Other states already show their card with the right buttons.
-                    if (state is dev.n2k02.updater.UpdateStatus.Idle || state is dev.n2k02.updater.UpdateStatus.Current || state is dev.n2k02.updater.UpdateStatus.Failed) {
-                        LiveUpdater.controller.check(manual = true)
-                    }
-                },
+                onClick = { open = false; onOpenUpdates() },
             )
         }
+    }
+}
+
+@Composable
+fun UpdatesPage() {
+    val experimentalEnabled by LiveUpdater.experimentalEnabled.collectAsState()
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        androidx.compose.material3.ListItem(
+            headlineContent = { Text("PixelCast") },
+            supportingContent = { Text("Version " + BuildConfig.VERSION_NAME) },
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Experimental updates", style = MaterialTheme.typography.titleMedium)
+                Text("Offer signed APKs from successful pull request builds. Test builds may have bugs.", style = MaterialTheme.typography.bodySmall)
+            }
+            androidx.compose.material3.Switch(checked = experimentalEnabled, onCheckedChange = LiveUpdater::setExperimentalEnabled)
+        }
+        androidx.compose.material3.HorizontalDivider()
+        UpdateCard()
     }
 }
