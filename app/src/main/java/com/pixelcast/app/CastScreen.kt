@@ -30,6 +30,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -41,6 +46,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.collectAsState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -85,21 +95,61 @@ class UiActions(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun CastScreen(state: UiState, actions: UiActions) {
+    var showingSettings by remember { mutableStateOf(false) }
     var showingUpdates by remember { mutableStateOf(false) }
+    var menuExpanded by remember { mutableStateOf(false) }
+    fun goHome() { showingSettings = false; showingUpdates = false; menuExpanded = false }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
-                title = { Text(if (showingUpdates) "Updates" else "PixelCast") },
-                navigationIcon = { if (showingUpdates) IconButton(onClick = { showingUpdates = false }) { Text("‹") } },
-                actions = { if (!showingUpdates) SettingsMenuButton(onOpenUpdates = { showingUpdates = true }) },
+                title = { Text(if (showingUpdates) "Updates" else if (showingSettings) "Settings" else "PixelCast") },
                 scrollBehavior = scrollBehavior,
             )
+        },
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    selected = !showingSettings,
+                    onClick = ::goHome,
+                    icon = { Icon(Icons.Rounded.Home, contentDescription = "Home") },
+                    label = { Text("Home") },
+                )
+                NavigationBarItem(
+                    selected = showingSettings,
+                    onClick = { showingSettings = true; showingUpdates = false; menuExpanded = false },
+                    icon = { Icon(Icons.Rounded.Settings, contentDescription = "Settings") },
+                    label = { Text("Settings") },
+                )
+                Box {
+                    NavigationBarItem(
+                        selected = false,
+                        onClick = { menuExpanded = true },
+                        icon = { Icon(Icons.Rounded.MoreVert, contentDescription = "More") },
+                        label = { Text("More") },
+                    )
+                    DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                        DropdownMenuItem(text = { Text("Home") }, leadingIcon = { Icon(Icons.Rounded.Home, null) }, onClick = ::goHome)
+                        DropdownMenuItem(text = { Text("Settings") }, leadingIcon = { Icon(Icons.Rounded.Settings, null) }, onClick = { showingSettings = true; showingUpdates = false; menuExpanded = false })
+                        DropdownMenuItem(text = { Text("Updates") }, leadingIcon = { Icon(Icons.Rounded.SystemUpdate, null) }, onClick = { showingSettings = true; showingUpdates = true; menuExpanded = false })
+                    }
+                }
+            }
         },
     ) { padding ->
         if (showingUpdates) {
             Column(Modifier.padding(padding).padding(16.dp)) { UpdatesPage() }
+        } else if (showingSettings) {
+            Column(Modifier.padding(padding).padding(16.dp)) {
+                ListItem(
+                    headlineContent = { Text("About & updates") },
+                    supportingContent = { Text("Version, experimental builds and update checks") },
+                    leadingContent = { Icon(Icons.Rounded.SystemUpdate, contentDescription = null) },
+                    modifier = Modifier.clickable { showingUpdates = true },
+                )
+                HorizontalDivider()
+            }
         } else LazyColumn(
             contentPadding = PaddingValues(
                 start = 16.dp, end = 16.dp,
