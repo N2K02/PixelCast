@@ -103,6 +103,26 @@ fun CastScreen(state: UiState, actions: UiActions) {
             ),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            item {
+                androidx.compose.material3.ListItem(
+                    headlineContent = { Text("PixelCast") },
+                    supportingContent = { Text("Version " + BuildConfig.VERSION_NAME) },
+                    leadingContent = { Icon(painterResource(R.drawable.ic_settings), null) },
+                )
+            }
+            item {
+                val experimentalEnabled by LiveUpdater.experimentalEnabled.collectAsState()
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Experimental updates", style = MaterialTheme.typography.titleMedium)
+                        Text("Offer signed APKs from successful pull request builds. Test builds may have bugs.",
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                    androidx.compose.material3.Switch(checked = experimentalEnabled, onCheckedChange = LiveUpdater::setExperimentalEnabled)
+                }
+            }
+            item { androidx.compose.material3.HorizontalDivider() }
+            item { Text("App updates", style = MaterialTheme.typography.titleLarge) }
             item { UpdateCard() }
             item {
                 AnimatedVisibility(visible = state.status.active || state.status.message != "Not casting") {
