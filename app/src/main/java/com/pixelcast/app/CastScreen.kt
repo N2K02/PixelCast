@@ -30,6 +30,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -40,6 +45,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -84,18 +90,49 @@ class UiActions(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun CastScreen(state: UiState, actions: UiActions) {
+    var showingSettings by remember { mutableStateOf(false) }
+    var showingUpdates by remember { mutableStateOf(false) }
+    fun goHome() { showingSettings = false; showingUpdates = false }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
-                title = { Text("PixelCast") },
-                actions = { SettingsMenuButton() },
+                title = { Text(if (showingUpdates) "Updates" else if (showingSettings) "Settings" else "PixelCast") },
                 scrollBehavior = scrollBehavior,
             )
         },
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    selected = !showingSettings,
+                    onClick = ::goHome,
+                    icon = { Icon(painterResource(R.drawable.ic_cast), contentDescription = "Home") },
+                    label = { Text("Home") },
+                )
+                NavigationBarItem(
+                    selected = showingSettings,
+                    onClick = { showingSettings = true; showingUpdates = false },
+                    icon = { Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings") },
+                    label = { Text("Settings") },
+                )
+
+            }
+        },
     ) { padding ->
-        LazyColumn(
+        if (showingUpdates) {
+            Column(Modifier.padding(padding).padding(16.dp)) { UpdatesPage() }
+        } else if (showingSettings) {
+            Column(Modifier.padding(padding).padding(16.dp)) {
+                ListItem(
+                    headlineContent = { Text("About & updates") },
+                    supportingContent = { Text("Version, experimental builds and update checks") },
+                    leadingContent = { Icon(painterResource(R.drawable.ic_system_update), contentDescription = null) },
+                    modifier = Modifier.clickable { showingUpdates = true },
+                )
+                HorizontalDivider()
+            }
+        } else LazyColumn(
             contentPadding = PaddingValues(
                 start = 16.dp, end = 16.dp,
                 top = padding.calculateTopPadding() + 8.dp,
@@ -103,7 +140,6 @@ fun CastScreen(state: UiState, actions: UiActions) {
             ),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            item { UpdateCard() }
             item {
                 AnimatedVisibility(visible = state.status.active || state.status.message != "Not casting") {
                     NowPlayingCard(state.status, actions)
@@ -288,7 +324,7 @@ private fun MediaCard(state: UiState, actions: UiActions) {
                     Text(if (state.mediaTitle == null) "Choose" else "Change")
                 }
             },
-            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            
         )
         // Subtitles only make sense for videos.
         if (state.mediaTitle != null && !state.mediaMime.startsWith("audio")) {

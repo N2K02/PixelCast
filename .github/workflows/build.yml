@@ -89,12 +89,13 @@ jobs:
       - name: Build APK
         env:
           SIGNING_PASSPHRASE: ${{ secrets.SIGNING_PASSPHRASE }}
+          N2K02_PACKAGES_TOKEN: ${{ secrets.N2K02_PACKAGES_TOKEN }}
         run: |
           echo "Android SDK: ${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           yes | "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           chmod +x gradlew
           set -o pipefail
-          ./gradlew --no-daemon assembleRelease -PappVersion="$VERSION" -PappVersionCode="$VERSION_CODE" -PappVersionSuffix="$VERSION_SUFFIX" 2>&1 | tee build.log || {
+          ./gradlew --no-daemon assembleRelease -PuseN2K02Libraries=true -PappVersion="$VERSION" -PappVersionCode="$VERSION_CODE" -PappVersionSuffix="$VERSION_SUFFIX" 2>&1 | tee build.log || {
             # One annotation with the full error text (GitHub caps annotations per step at 10).
             msg=$(grep -E '^e: |error:|What went wrong|Dependency .* requires|compileSdk|Android Gradle plugin' -A3 build.log | head -80 | sed -e 's/%/%25/g' | awk 'BEGIN{ORS="%0A"} {print}')
             echo "::error title=Build failed::$msg"
@@ -151,10 +152,15 @@ jobs:
         run: |
           set -euo pipefail
           TAG="experimental-pr-$PR_NUMBER-run-$GITHUB_RUN_NUMBER"
-          gh release create "$TAG" "$APP-$VERSION.apk" \
-            --repo "$GITHUB_REPOSITORY" --target "$PR_HEAD_SHA" \
-            --title "$APP experimental · PR #$PR_NUMBER · build $GITHUB_RUN_NUMBER" \
-            --notes-file release-notes.md --prerelease --latest=false
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Experimental release $TAG already exists (workflow rerun); updating its APK."
+            gh release upload "$TAG" "$APP-$VERSION.apk" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" "$APP-$VERSION.apk" \
+              --repo "$GITHUB_REPOSITORY" --target "$PR_HEAD_SHA" \
+              --title "$APP experimental · PR #$PR_NUMBER · build $GITHUB_RUN_NUMBER" \
+              --notes-file release-notes.md --prerelease --latest=false
+          fi
 
       - name: Check public distribution configuration
         id: distribution

@@ -74,116 +74,13 @@ private tailrec fun Context.activity(): Activity? = when (this) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun UpdateCard(modifier: Modifier = Modifier) {
-    val state by AppUpdater.state.collectAsState()
-    var diagnosticsVisible by remember { mutableStateOf(false) }
-    LaunchedEffect(state) { if (state !is AppUpdater.State.Failed) diagnosticsVisible = false }
-    val activity = LocalContext.current.activity()
-    // "You're up to date" (after a manual check) shows for a few seconds, then goes away.
-    LaunchedEffect(state) {
-        if (state is AppUpdater.State.UpToDate) {
-            delay(5_000)
-            if (AppUpdater.state.value is AppUpdater.State.UpToDate) AppUpdater.dismiss()
-        }
-    }
-    val visible = state is AppUpdater.State.UpToDate || state is AppUpdater.State.Checking || state is AppUpdater.State.Available || state is AppUpdater.State.Downloading ||
-        state is AppUpdater.State.NeedsPermission || state is AppUpdater.State.Ready ||
-        state is AppUpdater.State.Failed
-    AnimatedVisibility(visible = visible, modifier = modifier) {
-        Card(
-            shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = if (state is AppUpdater.State.Failed) MaterialTheme.colorScheme.errorContainer
-                else MaterialTheme.colorScheme.primaryContainer,
-            ),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                when (val s = state) {
-                    is AppUpdater.State.Checking -> {
-                        Title("Checking for updates…")
-                        LinearProgressIndicator(Modifier.fillMaxWidth())
-                        Text("Contacting GitHub for the latest release.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    is AppUpdater.State.UpToDate -> {
-                        Title("You're up to date")
-                        Text(
-                            "Version ${AppUpdater.installedVersionName} is the latest.",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                    is AppUpdater.State.Available -> {
-                        Title("Update available: ${s.release.versionName}")
-                        Notes(s.release)
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { diagnosticsVisible = false; AppUpdater.update(s.release) }) { Text("Update now") }
-                            TextButton(onClick = { AppUpdater.dismiss() }) { Text("Later") }
-                            TextButton(onClick = { AppUpdater.skip(s.release) }) { Text("Skip this version") }
-                        }
-                    }
-                    is AppUpdater.State.Downloading -> {
-                        Title("Downloading ${s.release.versionName}…")
-                        val p = s.progress
-                        if (p == null) {
-                            LinearProgressIndicator(Modifier.fillMaxWidth())
-                        } else {
-                            LinearProgressIndicator(progress = { p }, modifier = Modifier.fillMaxWidth())
-                            Text("${(p * 100).toInt()}%", style = MaterialTheme.typography.bodySmall)
-                        }
-                        TextButton(onClick = { AppUpdater.dismiss() }) { Text("Cancel") }
-                    }
-                    is AppUpdater.State.NeedsPermission -> {
-                        Title("One more step")
-                        Text(
-                            "Android needs your OK to let this app install its own updates. " +
-                                "Turn on \"Allow from this source\", then come back.",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { activity?.let { AppUpdater.openInstallPermission(it) } }) { Text("Open settings") }
-                            TextButton(onClick = { AppUpdater.dismiss() }) { Text("Later") }
-                        }
-                    }
-                    is AppUpdater.State.Ready -> {
-                        Title("${s.release.versionName} is ready to install")
-                        Text(
-                            "Android's installer opens. If Play Protect asks, you can scan the app or choose to install anyway.",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { AppUpdater.install(s.release) }) { Text("Install") }
-                            TextButton(onClick = { AppUpdater.dismiss() }) { Text("Later") }
-                        }
-                    }
-                    is AppUpdater.State.Failed -> {
-                        Title("Update problem")
-                        Text(s.message, style = MaterialTheme.typography.bodyMedium)
-                        TextButton(onClick = { diagnosticsVisible = !diagnosticsVisible }) {
-                            Text(if (diagnosticsVisible) "Hide details" else "Show details")
-                        }
-                        if (diagnosticsVisible) {
-                            Text(
-                                s.diagnostics.ifBlank { "No additional diagnostic details were captured." },
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                            Button(onClick = {
-                                val clipboard = activity?.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                                clipboard?.setPrimaryClip(ClipData.newPlainText("Update diagnostics", s.diagnostics))
-                            }) { Text("Copy diagnostics") }
-                        }
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            s.release?.let { r -> Button(onClick = { diagnosticsVisible = false; AppUpdater.update(r) }) { Text("Try again") } }
-                            TextButton(onClick = { activity?.let { AppUpdater.openReleasePage(it, s.release) } }) {
-                                Text("Open release page")
-                            }
-                            TextButton(onClick = { AppUpdater.dismiss() }) { Text("Close") }
-                        }
-                    }
-                    else -> Unit
-                }
-            }
-        }
-    }
+    dev.n2k02.updater.N2K02UpdateScreen(
+        controller = LiveUpdater.controller,
+        installGuard = LiveUpdater.installGuard,
+        modifier = modifier,
+    )
 }
+
 
 @Composable
 private fun Title(text: String) {
@@ -205,47 +102,36 @@ private fun Notes(release: AppUpdater.Release) {
  * update status, and checks for updates when tapped (the update card on the screen shows the result).
  */
 @Composable
-fun SettingsMenuButton() {
+fun SettingsMenuButton(onOpenUpdates: () -> Unit) {
     var open by remember { mutableStateOf(false) }
-    val state by AppUpdater.state.collectAsState()
-    val experimentalEnabled by AppUpdater.experimentalEnabled.collectAsState()
     Box {
         IconButton(onClick = { open = true }) {
             Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings")
         }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.clip(RoundedCornerShape(22.dp))) {
             DropdownMenuItem(
-                text = { Text(if (experimentalEnabled) "Experimental updates: on" else "Experimental updates: off") },
-                onClick = { open = false; AppUpdater.setExperimentalEnabled(!experimentalEnabled) },
-            )
-
-            DropdownMenuItem(
-                text = {
-                    Column {
-                        Text("Update")
-                        Text(
-                            when (val u = state) {
-                                is AppUpdater.State.Checking -> "Checking…"
-                                is AppUpdater.State.Available -> "Version ${u.release.versionName} available"
-                                is AppUpdater.State.Downloading -> "Downloading…"
-                                is AppUpdater.State.Ready, is AppUpdater.State.NeedsPermission -> "Ready to install"
-                                is AppUpdater.State.UpToDate -> "Up to date · v${AppUpdater.installedVersionName}"
-                                else -> "v${AppUpdater.installedVersionName} · check for updates"
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                },
+                text = { Text("About & updates") },
                 leadingIcon = { Icon(painterResource(R.drawable.ic_system_update), contentDescription = null) },
-                onClick = {
-                    open = false
-                    // Other states already show their card with the right buttons.
-                    if (state is AppUpdater.State.Idle || state is AppUpdater.State.UpToDate || state is AppUpdater.State.Failed) {
-                        AppUpdater.check(manual = true)
-                    }
-                },
+                onClick = { open = false; onOpenUpdates() },
             )
         }
+    }
+}
+
+@Composable
+fun UpdatesPage() {
+    val experimentalEnabled by LiveUpdater.experimentalEnabled.collectAsState()
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        androidx.compose.material3.ListItem(
+            headlineContent = { Text("PixelCast") },
+            supportingContent = { Text("Version " + BuildConfig.VERSION_NAME) },
+        )
+        androidx.compose.material3.ListItem(
+            headlineContent = { Text("Experimental updates") },
+            supportingContent = { Text("Offer signed APKs from successful pull request builds. Test builds may have bugs.") },
+            trailingContent = { androidx.compose.material3.Switch(checked = experimentalEnabled, onCheckedChange = LiveUpdater::setExperimentalEnabled) },
+        )
+        androidx.compose.material3.HorizontalDivider()
+        UpdateCard()
     }
 }

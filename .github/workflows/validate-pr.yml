@@ -18,10 +18,12 @@ jobs:
           distribution: temurin
           java-version: '17'
       - name: Compile and test without publishing
+        env:
+          N2K02_PACKAGES_TOKEN: ${{ secrets.N2K02_PACKAGES_TOKEN }}
         run: |
           if [ -f ./gradlew ]; then
             chmod +x ./gradlew
-            ./gradlew --no-daemon testDebugUnitTest assembleDebug
+            ./gradlew --no-daemon testDebugUnitTest assembleDebug -PuseN2K02Libraries=true
           else
             gradle --no-daemon testDebugUnitTest assembleDebug
           fi

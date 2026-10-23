@@ -34,6 +34,7 @@ android {
     }
 
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 
@@ -49,4 +50,10 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.11.0")
     // In-app updates (AppUpdater)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+}
+
+ // Opt-in compile-only shared library evaluation; no production runtime cutover.
+dependencies {
+    implementation("dev.n2k02:theme:0.1.4")
+    implementation("dev.n2k02:updater:0.1.11")
 }
