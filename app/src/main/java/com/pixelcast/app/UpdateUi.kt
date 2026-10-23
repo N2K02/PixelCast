@@ -213,7 +213,7 @@ fun SettingsMenuButton() {
         IconButton(onClick = { open = true }) {
             Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings")
         }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.clip(RoundedCornerShape(24.dp))) {
             DropdownMenuItem(
                 text = { Text(if (experimentalEnabled) "Experimental updates: on" else "Experimental updates: off") },
                 onClick = { open = false; AppUpdater.setExperimentalEnabled(!experimentalEnabled) },
