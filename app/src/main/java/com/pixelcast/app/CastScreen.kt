@@ -91,7 +91,7 @@ fun CastScreen(state: UiState, actions: UiActions) {
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
-                title = { Text(if (showingUpdates) "About & updates" else "PixelCast") },
+                title = { Text(if (showingUpdates) "Updates" else "PixelCast") },
                 navigationIcon = { if (showingUpdates) IconButton(onClick = { showingUpdates = false }) { Text("‹") } },
                 actions = { if (!showingUpdates) SettingsMenuButton(onOpenUpdates = { showingUpdates = true }) },
                 scrollBehavior = scrollBehavior,
