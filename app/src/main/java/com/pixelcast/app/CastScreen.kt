@@ -324,14 +324,14 @@ private fun TvCard(state: UiState, actions: UiActions) {
     ElevatedCard(shape = MaterialTheme.shapes.extraLarge, modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Box(Modifier.weight(1f)) { SectionTitle("TV") }
-            if (state.searching) {
-                LoadingIndicator(Modifier.padding(end = 16.dp, top = 8.dp).size(40.dp))
-            } else {
-                OutlinedButton(
-                    onClick = actions.findTvs,
-                    shapes = ButtonDefaults.shapes(),
-                    modifier = Modifier.padding(end = 16.dp, top = 8.dp),
-                ) { Text("Find TVs") }
+            OutlinedButton(
+                onClick = actions.findTvs,
+                enabled = !state.searching,
+                shapes = ButtonDefaults.shapes(),
+                modifier = Modifier.padding(end = 16.dp, top = 8.dp),
+            ) {
+                if (state.searching) LoadingIndicator(Modifier.size(28.dp))
+                else Text("Find TVs")
             }
         }
         if (state.searchHint.isNotEmpty()) {

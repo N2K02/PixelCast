@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.pixelcast.app
 
 import android.app.Activity
@@ -35,6 +37,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -101,7 +104,7 @@ fun UpdateCard(modifier: Modifier = Modifier) {
                 when (val s = state) {
                     is AppUpdater.State.Checking -> {
                         Title("Checking for updates…")
-                        LinearProgressIndicator(Modifier.fillMaxWidth())
+                        LoadingIndicator(Modifier.size(36.dp))
                         Text("Contacting GitHub for the latest release.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     is AppUpdater.State.UpToDate -> {
@@ -213,7 +216,7 @@ fun SettingsMenuButton() {
         IconButton(onClick = { open = true }) {
             Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings")
         }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.clip(RoundedCornerShape(24.dp))) {
             DropdownMenuItem(
                 text = { Text(if (experimentalEnabled) "Experimental updates: on" else "Experimental updates: off") },
                 onClick = { open = false; AppUpdater.setExperimentalEnabled(!experimentalEnabled) },
