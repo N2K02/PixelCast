@@ -92,8 +92,7 @@ class UiActions(
 fun CastScreen(state: UiState, actions: UiActions) {
     var showingSettings by remember { mutableStateOf(false) }
     var showingUpdates by remember { mutableStateOf(false) }
-    var menuExpanded by remember { mutableStateOf(false) }
-    fun goHome() { showingSettings = false; showingUpdates = false; menuExpanded = false }
+    fun goHome() { showingSettings = false; showingUpdates = false }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -113,23 +112,11 @@ fun CastScreen(state: UiState, actions: UiActions) {
                 )
                 NavigationBarItem(
                     selected = showingSettings,
-                    onClick = { showingSettings = true; showingUpdates = false; menuExpanded = false },
+                    onClick = { showingSettings = true; showingUpdates = false },
                     icon = { Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings") },
                     label = { Text("Settings") },
                 )
-                NavigationBarItem(
-                        selected = false,
-                        onClick = { menuExpanded = true },
-                        icon = { Icon(painterResource(R.drawable.ic_settings), contentDescription = "More") },
-                        label = { Text("More") },
-                    )
-                Box {
-                    DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                        DropdownMenuItem(text = { Text("Home") }, leadingIcon = { Icon(painterResource(R.drawable.ic_cast), null) }, onClick = ::goHome)
-                        DropdownMenuItem(text = { Text("Settings") }, leadingIcon = { Icon(painterResource(R.drawable.ic_settings), null) }, onClick = { showingSettings = true; showingUpdates = false; menuExpanded = false })
-                        DropdownMenuItem(text = { Text("Updates") }, leadingIcon = { Icon(painterResource(R.drawable.ic_system_update), null) }, onClick = { showingSettings = true; showingUpdates = true; menuExpanded = false })
-                    }
-                }
+
             }
         },
     ) { padding ->
