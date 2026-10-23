@@ -85,18 +85,22 @@ class UiActions(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun CastScreen(state: UiState, actions: UiActions) {
+    var showingUpdates by remember { mutableStateOf(false) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
-                title = { Text("PixelCast") },
-                actions = { SettingsMenuButton() },
+                title = { Text(if (showingUpdates) "About & updates" else "PixelCast") },
+                navigationIcon = { if (showingUpdates) IconButton(onClick = { showingUpdates = false }) { Text("‹") } },
+                actions = { if (!showingUpdates) SettingsMenuButton(onOpenUpdates = { showingUpdates = true }) },
                 scrollBehavior = scrollBehavior,
             )
         },
     ) { padding ->
-        LazyColumn(
+        if (showingUpdates) {
+            Column(Modifier.padding(padding).padding(16.dp)) { UpdatesPage() }
+        } else LazyColumn(
             contentPadding = PaddingValues(
                 start = 16.dp, end = 16.dp,
                 top = padding.calculateTopPadding() + 8.dp,
@@ -104,27 +108,6 @@ fun CastScreen(state: UiState, actions: UiActions) {
             ),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            item {
-                androidx.compose.material3.ListItem(
-                    headlineContent = { Text("PixelCast") },
-                    supportingContent = { Text("Version " + BuildConfig.VERSION_NAME) },
-                    leadingContent = { Icon(painterResource(R.drawable.ic_settings), null) },
-                )
-            }
-            item {
-                val experimentalEnabled by LiveUpdater.experimentalEnabled.collectAsState()
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Experimental updates", style = MaterialTheme.typography.titleMedium)
-                        Text("Offer signed APKs from successful pull request builds. Test builds may have bugs.",
-                            style = MaterialTheme.typography.bodySmall)
-                    }
-                    androidx.compose.material3.Switch(checked = experimentalEnabled, onCheckedChange = LiveUpdater::setExperimentalEnabled)
-                }
-            }
-            item { androidx.compose.material3.HorizontalDivider() }
-            item { Text("App updates", style = MaterialTheme.typography.titleLarge) }
-            item { UpdateCard() }
             item {
                 AnimatedVisibility(visible = state.status.active || state.status.message != "Not casting") {
                     NowPlayingCard(state.status, actions)
