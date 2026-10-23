@@ -1,5 +1,7 @@
 package com.pixelcast.app
 
+import androidx.compose.ui.unit.dp
+
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -31,6 +33,7 @@ fun PixelCastTheme(content: @Composable () -> Unit) {
     }
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
+        shapes = androidx.compose.material3.MaterialTheme.shapes.copy(extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(28.dp)),
         motionScheme = MotionScheme.expressive(),
         content = content,
     )
