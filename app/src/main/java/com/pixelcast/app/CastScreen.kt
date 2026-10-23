@@ -292,7 +292,7 @@ private fun MediaCard(state: UiState, actions: UiActions) {
                     Text(if (state.mediaTitle == null) "Choose" else "Change")
                 }
             },
-            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            
         )
         // Subtitles only make sense for videos.
         if (state.mediaTitle != null && !state.mediaMime.startsWith("audio")) {
