@@ -46,11 +46,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.collectAsState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -113,26 +108,26 @@ fun CastScreen(state: UiState, actions: UiActions) {
                 NavigationBarItem(
                     selected = !showingSettings,
                     onClick = ::goHome,
-                    icon = { Icon(Icons.Rounded.Home, contentDescription = "Home") },
+                    icon = { Icon(painterResource(R.drawable.ic_cast), contentDescription = "Home") },
                     label = { Text("Home") },
                 )
                 NavigationBarItem(
                     selected = showingSettings,
                     onClick = { showingSettings = true; showingUpdates = false; menuExpanded = false },
-                    icon = { Icon(Icons.Rounded.Settings, contentDescription = "Settings") },
+                    icon = { Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings") },
                     label = { Text("Settings") },
                 )
-                Box {
-                    NavigationBarItem(
+                NavigationBarItem(
                         selected = false,
                         onClick = { menuExpanded = true },
-                        icon = { Icon(Icons.Rounded.MoreVert, contentDescription = "More") },
+                        icon = { Icon(painterResource(R.drawable.ic_settings), contentDescription = "More") },
                         label = { Text("More") },
                     )
+                Box {
                     DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                        DropdownMenuItem(text = { Text("Home") }, leadingIcon = { Icon(Icons.Rounded.Home, null) }, onClick = ::goHome)
-                        DropdownMenuItem(text = { Text("Settings") }, leadingIcon = { Icon(Icons.Rounded.Settings, null) }, onClick = { showingSettings = true; showingUpdates = false; menuExpanded = false })
-                        DropdownMenuItem(text = { Text("Updates") }, leadingIcon = { Icon(Icons.Rounded.SystemUpdate, null) }, onClick = { showingSettings = true; showingUpdates = true; menuExpanded = false })
+                        DropdownMenuItem(text = { Text("Home") }, leadingIcon = { Icon(painterResource(R.drawable.ic_cast), null) }, onClick = ::goHome)
+                        DropdownMenuItem(text = { Text("Settings") }, leadingIcon = { Icon(painterResource(R.drawable.ic_settings), null) }, onClick = { showingSettings = true; showingUpdates = false; menuExpanded = false })
+                        DropdownMenuItem(text = { Text("Updates") }, leadingIcon = { Icon(painterResource(R.drawable.ic_system_update), null) }, onClick = { showingSettings = true; showingUpdates = true; menuExpanded = false })
                     }
                 }
             }
@@ -145,7 +140,7 @@ fun CastScreen(state: UiState, actions: UiActions) {
                 ListItem(
                     headlineContent = { Text("About & updates") },
                     supportingContent = { Text("Version, experimental builds and update checks") },
-                    leadingContent = { Icon(Icons.Rounded.SystemUpdate, contentDescription = null) },
+                    leadingContent = { Icon(painterResource(R.drawable.ic_system_update), contentDescription = null) },
                     modifier = Modifier.clickable { showingUpdates = true },
                 )
                 HorizontalDivider()
