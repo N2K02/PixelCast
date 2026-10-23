@@ -126,13 +126,11 @@ fun UpdatesPage() {
             headlineContent = { Text("PixelCast") },
             supportingContent = { Text("Version " + BuildConfig.VERSION_NAME) },
         )
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("Experimental updates", style = MaterialTheme.typography.titleMedium)
-                Text("Offer signed APKs from successful pull request builds. Test builds may have bugs.", style = MaterialTheme.typography.bodySmall)
-            }
-            androidx.compose.material3.Switch(checked = experimentalEnabled, onCheckedChange = LiveUpdater::setExperimentalEnabled)
-        }
+        androidx.compose.material3.ListItem(
+            headlineContent = { Text("Experimental updates") },
+            supportingContent = { Text("Offer signed APKs from successful pull request builds. Test builds may have bugs.") },
+            trailingContent = { androidx.compose.material3.Switch(checked = experimentalEnabled, onCheckedChange = LiveUpdater::setExperimentalEnabled) },
+        )
         androidx.compose.material3.HorizontalDivider()
         UpdateCard()
     }
