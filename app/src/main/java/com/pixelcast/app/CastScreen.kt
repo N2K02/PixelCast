@@ -46,6 +46,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.collectAsState
+import dev.n2k02.updater.hasPendingUpdate
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -90,6 +91,7 @@ class UiActions(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun CastScreen(state: UiState, actions: UiActions) {
+    val updateStatus by LiveUpdater.controller.status.collectAsState()
     var showingSettings by remember { mutableStateOf(false) }
     var showingUpdates by remember { mutableStateOf(false) }
     fun goHome() { showingSettings = false; showingUpdates = false }
@@ -113,7 +115,7 @@ fun CastScreen(state: UiState, actions: UiActions) {
                 NavigationBarItem(
                     selected = showingSettings,
                     onClick = { showingSettings = true; showingUpdates = false },
-                    icon = { Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings") },
+                    icon = { dev.n2k02.updater.N2K02UpdateBadgedIcon(updateStatus) { Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings") } },
                     label = { Text("Settings") },
                 )
 
@@ -126,8 +128,9 @@ fun CastScreen(state: UiState, actions: UiActions) {
             Column(Modifier.padding(padding).padding(16.dp)) {
                 ListItem(
                     headlineContent = { Text("About & updates") },
-                    supportingContent = { Text("Version, experimental builds and update checks") },
+                    supportingContent = { Text(if (updateStatus.hasPendingUpdate()) "A new update is available" else "Version, experimental builds and update checks") },
                     leadingContent = { Icon(painterResource(R.drawable.ic_system_update), contentDescription = null) },
+                    trailingContent = { dev.n2k02.updater.N2K02UpdateBadge(updateStatus) },
                     modifier = Modifier.clickable { showingUpdates = true },
                 )
                 HorizontalDivider()
