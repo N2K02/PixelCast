@@ -120,11 +120,12 @@ fun SettingsMenuButton(onOpenUpdates: () -> Unit) {
 }
 
 @Composable
-fun UpdatesPage() {
+fun UpdatesPage(modifier: Modifier = Modifier) {
     val experimental by LiveUpdater.experimentalEnabled.collectAsState()
     dev.n2k02.updater.N2K02UpdatePage(
         controller = LiveUpdater.controller,
         installGuard = LiveUpdater.installGuard,
+        modifier = modifier,
         experimentalEnabled = experimental,
         onExperimentalEnabledChange = LiveUpdater::setExperimentalEnabled,
     )
