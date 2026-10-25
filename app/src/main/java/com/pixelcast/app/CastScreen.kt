@@ -34,6 +34,8 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -86,6 +88,7 @@ class UiActions(
     val rewind: () -> Unit,
     val forward: () -> Unit,
     val stop: () -> Unit,
+    val quit: () -> Unit,
     val seekTo: (Long) -> Unit,
     val setVolume: (Int) -> Unit,
     val toggleMute: () -> Unit,
@@ -145,7 +148,13 @@ fun CastScreen(state: UiState, actions: UiActions) {
                     icon = { dev.n2k02.updater.N2K02UpdateBadgedIcon(updateStatus) { Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings") } },
                     label = { Text("Settings") },
                 )
-
+                NavigationBarItem(
+                    selected = false,
+                    onClick = actions.quit,
+                    icon = { Icon(Icons.Rounded.PowerSettingsNew, contentDescription = "Quit") },
+                    label = { Text("Quit") },
+                    alwaysShowLabel = true,
+                )
             }
         },
     ) { padding ->
