@@ -149,7 +149,18 @@ fun CastScreen(state: UiState, actions: UiActions) {
         if (showingUpdates) {
             UpdatesPage(modifier = Modifier.padding(padding))
         } else if (showingSettings) {
-            Column(Modifier.padding(padding).padding(16.dp)) {
+            Column(
+                Modifier.fillMaxSize().padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    "App information",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 16.dp, top = 6.dp, bottom = 12.dp),
+                )
                 ListItem(
                     headlineContent = { Text("About & updates") },
                     supportingContent = { Text(if (updateStatus.hasPendingUpdate()) "A new update is available" else "Version, experimental builds and update checks") },
@@ -157,7 +168,6 @@ fun CastScreen(state: UiState, actions: UiActions) {
                     trailingContent = { dev.n2k02.updater.N2K02UpdateBadge(updateStatus) },
                     modifier = Modifier.clickable { showingUpdates = true },
                 )
-                HorizontalDivider()
             }
         } else LazyColumn(
             contentPadding = PaddingValues(
