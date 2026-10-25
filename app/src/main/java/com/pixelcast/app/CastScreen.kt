@@ -34,8 +34,6 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.NavigationBar
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -151,7 +149,7 @@ fun CastScreen(state: UiState, actions: UiActions) {
                 NavigationBarItem(
                     selected = false,
                     onClick = actions.quit,
-                    icon = { Icon(Icons.Rounded.PowerSettingsNew, contentDescription = "Quit") },
+                    icon = { Icon(painterResource(R.drawable.ic_stop), contentDescription = "Quit") },
                     label = { Text("Quit") },
                     alwaysShowLabel = true,
                 )
