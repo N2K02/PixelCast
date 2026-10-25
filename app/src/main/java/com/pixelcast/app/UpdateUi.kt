@@ -120,18 +120,11 @@ fun SettingsMenuButton(onOpenUpdates: () -> Unit) {
 
 @Composable
 fun UpdatesPage() {
-    val experimentalEnabled by LiveUpdater.experimentalEnabled.collectAsState()
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        androidx.compose.material3.ListItem(
-            headlineContent = { Text("PixelCast") },
-            supportingContent = { Text("Version " + BuildConfig.VERSION_NAME) },
-        )
-        androidx.compose.material3.ListItem(
-            headlineContent = { Text("Experimental updates") },
-            supportingContent = { Text("Offer signed APKs from successful pull request builds. Test builds may have bugs.") },
-            trailingContent = { androidx.compose.material3.Switch(checked = experimentalEnabled, onCheckedChange = LiveUpdater::setExperimentalEnabled) },
-        )
-        androidx.compose.material3.HorizontalDivider()
-        UpdateCard()
-    }
+    val experimental by LiveUpdater.experimentalEnabled.collectAsState()
+    dev.n2k02.updater.N2K02UpdatePage(
+        controller = LiveUpdater.controller,
+        installGuard = LiveUpdater.installGuard,
+        experimentalEnabled = experimental,
+        onExperimentalEnabledChange = LiveUpdater::setExperimentalEnabled,
+    )
 }
