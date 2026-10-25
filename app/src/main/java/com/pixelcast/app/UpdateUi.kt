@@ -104,13 +104,14 @@ private fun Notes(release: AppUpdater.Release) {
 @Composable
 fun SettingsMenuButton(onOpenUpdates: () -> Unit) {
     var open by remember { mutableStateOf(false) }
+    val updateState by LiveUpdater.controller.status.collectAsState()
     Box {
         IconButton(onClick = { open = true }) {
-            Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings")
+            dev.n2k02.updater.N2K02UpdateBadgedIcon(updateState) { Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings") }
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.clip(RoundedCornerShape(22.dp))) {
             DropdownMenuItem(
-                text = { Text("About & updates") },
+                text = { Row { Text("About & updates"); dev.n2k02.updater.N2K02UpdateBadge(updateState) } },
                 leadingIcon = { Icon(painterResource(R.drawable.ic_system_update), contentDescription = null) },
                 onClick = { open = false; onOpenUpdates() },
             )
@@ -120,18 +121,11 @@ fun SettingsMenuButton(onOpenUpdates: () -> Unit) {
 
 @Composable
 fun UpdatesPage() {
-    val experimentalEnabled by LiveUpdater.experimentalEnabled.collectAsState()
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        androidx.compose.material3.ListItem(
-            headlineContent = { Text("PixelCast") },
-            supportingContent = { Text("Version " + BuildConfig.VERSION_NAME) },
-        )
-        androidx.compose.material3.ListItem(
-            headlineContent = { Text("Experimental updates") },
-            supportingContent = { Text("Offer signed APKs from successful pull request builds. Test builds may have bugs.") },
-            trailingContent = { androidx.compose.material3.Switch(checked = experimentalEnabled, onCheckedChange = LiveUpdater::setExperimentalEnabled) },
-        )
-        androidx.compose.material3.HorizontalDivider()
-        UpdateCard()
-    }
+    val experimental by LiveUpdater.experimentalEnabled.collectAsState()
+    dev.n2k02.updater.N2K02UpdatePage(
+        controller = LiveUpdater.controller,
+        installGuard = LiveUpdater.installGuard,
+        experimentalEnabled = experimental,
+        onExperimentalEnabledChange = LiveUpdater::setExperimentalEnabled,
+    )
 }
