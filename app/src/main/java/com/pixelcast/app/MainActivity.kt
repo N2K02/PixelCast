@@ -76,6 +76,10 @@ class MainActivity : ComponentActivity() {
             rewind = { send(CastService.ACTION_REWIND) },
             forward = { send(CastService.ACTION_FORWARD) },
             stop = { send(CastService.ACTION_STOP) },
+            quit = {
+                send(CastService.ACTION_STOP)
+                finishAndRemoveTask()
+            },
             seekTo = { send(CastService.ACTION_SEEK, it) },
             setVolume = { volume ->
                 startService(

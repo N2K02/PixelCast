@@ -2,6 +2,9 @@ package com.pixelcast.app
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +18,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -28,7 +33,7 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -83,6 +88,7 @@ class UiActions(
     val rewind: () -> Unit,
     val forward: () -> Unit,
     val stop: () -> Unit,
+    val quit: () -> Unit,
     val seekTo: (Long) -> Unit,
     val setVolume: (Int) -> Unit,
     val toggleMute: () -> Unit,
@@ -95,12 +101,36 @@ fun CastScreen(state: UiState, actions: UiActions) {
     var showingSettings by remember { mutableStateOf(false) }
     var showingUpdates by remember { mutableStateOf(false) }
     fun goHome() { showingSettings = false; showingUpdates = false }
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            LargeTopAppBar(
-                title = { if (showingUpdates) dev.n2k02.updater.N2K02UpdateTitle() else Text(if (showingSettings) "Settings" else "PixelCast") },
+            TopAppBar(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Icon(
+                            painterResource(when {
+                                showingUpdates -> R.drawable.ic_system_update
+                                showingSettings -> R.drawable.ic_settings
+                                else -> R.drawable.ic_cast
+                            }),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp),
+                        )
+                        Text(when {
+                            showingUpdates -> "About & updates"
+                            showingSettings -> "Settings"
+                            else -> "Home"
+                        }, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                },
+                actions = {
+                    dev.n2k02.updater.N2K02AppIcon(Modifier.size(28.dp))
+                    Text("PixelCast", modifier = Modifier.padding(start = 6.dp, end = 12.dp),
+                        style = MaterialTheme.typography.titleMedium)
+                },
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -118,14 +148,31 @@ fun CastScreen(state: UiState, actions: UiActions) {
                     icon = { dev.n2k02.updater.N2K02UpdateBadgedIcon(updateStatus) { Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings") } },
                     label = { Text("Settings") },
                 )
-
+                NavigationBarItem(
+                    selected = false,
+                    onClick = actions.quit,
+                    icon = { Icon(Icons.Rounded.PowerSettingsNew, contentDescription = "Quit") },
+                    label = { Text("Quit") },
+                    alwaysShowLabel = true,
+                )
             }
         },
     ) { padding ->
         if (showingUpdates) {
             UpdatesPage(modifier = Modifier.padding(padding))
         } else if (showingSettings) {
-            Column(Modifier.padding(padding).padding(16.dp)) {
+            Column(
+                Modifier.fillMaxSize().padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    "App information",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 16.dp, top = 6.dp, bottom = 12.dp),
+                )
                 ListItem(
                     headlineContent = { Text("About & updates") },
                     supportingContent = { Text(if (updateStatus.hasPendingUpdate()) "A new update is available" else "Version, experimental builds and update checks") },
@@ -133,7 +180,6 @@ fun CastScreen(state: UiState, actions: UiActions) {
                     trailingContent = { dev.n2k02.updater.N2K02UpdateBadge(updateStatus) },
                     modifier = Modifier.clickable { showingUpdates = true },
                 )
-                HorizontalDivider()
             }
         } else LazyColumn(
             contentPadding = PaddingValues(
