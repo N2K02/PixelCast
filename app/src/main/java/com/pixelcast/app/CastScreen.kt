@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -149,7 +151,7 @@ fun CastScreen(state: UiState, actions: UiActions) {
                 NavigationBarItem(
                     selected = false,
                     onClick = actions.quit,
-                    icon = { Icon(painterResource(R.drawable.ic_stop), contentDescription = "Quit") },
+                    icon = { Icon(Icons.Rounded.PowerSettingsNew, contentDescription = "Quit") },
                     label = { Text("Quit") },
                     alwaysShowLabel = true,
                 )
