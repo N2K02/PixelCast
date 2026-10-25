@@ -100,7 +100,31 @@ fun CastScreen(state: UiState, actions: UiActions) {
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
-                title = { if (showingUpdates) dev.n2k02.updater.N2K02UpdateTitle() else Text(if (showingSettings) "Settings" else "PixelCast") },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Icon(
+                            painterResource(when {
+                                showingUpdates -> R.drawable.ic_system_update
+                                showingSettings -> R.drawable.ic_settings
+                                else -> R.drawable.ic_cast
+                            }),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp),
+                        )
+                        Text(when {
+                            showingUpdates -> "About & updates"
+                            showingSettings -> "Settings"
+                            else -> "Home"
+                        }, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                },
+                actions = {
+                    dev.n2k02.updater.N2K02AppIcon(Modifier.size(28.dp))
+                    Text("PixelCast", modifier = Modifier.padding(start = 6.dp, end = 12.dp),
+                        style = MaterialTheme.typography.titleMedium)
+                },
                 scrollBehavior = scrollBehavior,
             )
         },
