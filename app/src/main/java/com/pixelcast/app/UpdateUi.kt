@@ -104,13 +104,14 @@ private fun Notes(release: AppUpdater.Release) {
 @Composable
 fun SettingsMenuButton(onOpenUpdates: () -> Unit) {
     var open by remember { mutableStateOf(false) }
+    val updateState by LiveUpdater.controller.status.collectAsState()
     Box {
         IconButton(onClick = { open = true }) {
-            Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings")
+            dev.n2k02.updater.N2K02UpdateBadgedIcon(updateState) { Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings") }
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.clip(RoundedCornerShape(22.dp))) {
             DropdownMenuItem(
-                text = { Text("About & updates") },
+                text = { Row { Text("About & updates"); dev.n2k02.updater.N2K02UpdateBadge(updateState) } },
                 leadingIcon = { Icon(painterResource(R.drawable.ic_system_update), contentDescription = null) },
                 onClick = { open = false; onOpenUpdates() },
             )
