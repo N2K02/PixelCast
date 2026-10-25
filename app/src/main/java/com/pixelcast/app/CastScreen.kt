@@ -100,7 +100,7 @@ fun CastScreen(state: UiState, actions: UiActions) {
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
-                title = { Text(if (showingUpdates) "Updates" else if (showingSettings) "Settings" else "PixelCast") },
+                title = { if (showingUpdates) dev.n2k02.updater.N2K02UpdateTitle() else Text(if (showingSettings) "Settings" else "PixelCast") },
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -123,7 +123,7 @@ fun CastScreen(state: UiState, actions: UiActions) {
         },
     ) { padding ->
         if (showingUpdates) {
-            Column(Modifier.padding(padding).padding(16.dp)) { UpdatesPage() }
+            UpdatesPage(modifier = Modifier.padding(padding))
         } else if (showingSettings) {
             Column(Modifier.padding(padding).padding(16.dp)) {
                 ListItem(
