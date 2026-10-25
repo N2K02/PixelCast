@@ -15,6 +15,14 @@ class QuitNavigationContractTest {
         assertTrue("Missing label = { Text(Quit) }", src.contains("label = { Text(\"Quit\") }"))
         assertTrue("Missing onClick = actions.quit", src.contains("onClick = actions.quit"))
         assertTrue("Missing val quit: () -> Unit", src.contains("val quit: () -> Unit"))
+        assertTrue("Quit must use the same rounded power icon as mRadio",
+            src.contains("Icon(Icons.Rounded.PowerSettingsNew, contentDescription = \"Quit\")"))
+        assertFalse("Quit must not use the Stop-square icon", src.contains("Icon(painterResource(R.drawable.ic_stop), contentDescription = \"Quit\")"))
+        val buildRelative = "app/build.gradle.kts"
+        val gradle = listOf(File(buildRelative), File("../$buildRelative"))
+            .firstOrNull { it.isFile }?.readText() ?: error("Missing $buildRelative")
+        assertTrue("Include the same Compose rounded icon library as mRadio",
+            gradle.contains("androidx.compose.material:material-icons-extended:1.7.8"))
 
         assertTrue(
             "Quit must follow Settings in the bottom menu",
