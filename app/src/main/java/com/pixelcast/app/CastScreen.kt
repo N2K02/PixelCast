@@ -19,7 +19,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.material.icons.rounded.PowerSettingsNew
+import androidx.compose.material.icons.rounded.Article
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -112,9 +114,8 @@ fun CastScreen(state: UiState, actions: UiActions) {
                     Row(verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Icon(
-                            painterResource(when {
+                            painter = if (showingLogs) rememberVectorPainter(Icons.Rounded.Article) else painterResource(when {
                                 showingUpdates -> R.drawable.ic_system_update
-                                showingLogs -> R.drawable.ic_settings
                                 showingSettings -> R.drawable.ic_settings
                                 else -> R.drawable.ic_cast
                             }),
@@ -182,6 +183,7 @@ fun CastScreen(state: UiState, actions: UiActions) {
                 ListItem(
                     headlineContent = { Text("Logs") },
                     supportingContent = { Text("Private diagnostic and crash history") },
+                    leadingContent = { Icon(Icons.Rounded.Article, contentDescription = null) },
                     modifier = Modifier.clickable { showingLogs = true; showingSettings = false },
                 )
                 ListItem(
