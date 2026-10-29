@@ -7,5 +7,5 @@ import androidx.compose.ui.Modifier
 /** Hosted by the main Settings page, sharing its n2k02theme header. */
 @Composable
 internal fun PixelCastLogsPage(modifier: Modifier = Modifier, onBack: () -> Unit) {
-    N2K02UnifiedLogsPage(modifier = modifier, appName = "PixelCast", onBack = onBack)
+    N2K02UnifiedLogsPage(modifier = modifier, appName = "PixelCast")
 }
