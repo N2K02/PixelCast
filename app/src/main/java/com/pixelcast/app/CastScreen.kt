@@ -163,8 +163,7 @@ fun CastScreen(state: UiState, actions: UiActions) {
         },
     ) { padding ->
         if (showingLogs) {
-            PixelCastLogsPage(modifier = Modifier.fillMaxSize().padding(padding),
-                onBack = { showingLogs = false; showingSettings = true })
+            PixelCastLogsPage(modifier = Modifier.fillMaxSize().padding(padding))
         } else if (showingUpdates) {
             UpdatesPage(modifier = Modifier.padding(padding))
         } else if (showingSettings) {
