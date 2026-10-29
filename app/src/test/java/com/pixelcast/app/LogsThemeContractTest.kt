@@ -17,9 +17,9 @@ class LogsThemeContractTest {
         assertFalse(app.contains("LogsActivity::class.java"))
         assertFalse(logs.contains("MaterialTheme {"))
         assertFalse(logs.contains("class LogsActivity"))
-        assertTrue(logs.contains("maxHeight < 430.dp"))
-        assertTrue(logs.contains("onClick = AppLog::clear"))
-        assertTrue(logs.contains("Switch(checked = enabled"))
+        assertTrue(src("app/src/main/java/com/pixelcast/app/UnifiedLogsPage.kt").contains("maxHeight < 430.dp"))
+        assertTrue(src("app/src/main/java/com/pixelcast/app/UnifiedLogsPage.kt").contains("AppLog.clear()"))
+        assertTrue(src("app/src/main/java/com/pixelcast/app/UnifiedLogsPage.kt").contains("Switch(checked = enabled"))
         assertFalse(manifest.contains("com.pixelcast.app.LogsActivity"))
     }
 }
