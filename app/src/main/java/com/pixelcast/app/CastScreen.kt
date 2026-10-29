@@ -173,6 +173,15 @@ fun CastScreen(state: UiState, actions: UiActions) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 16.dp, top = 6.dp, bottom = 12.dp),
                 )
+                val logScreenContext = androidx.compose.ui.platform.LocalContext.current
+                ListItem(
+                    headlineContent = { Text("Logs") },
+                    supportingContent = { Text("Private diagnostic and crash history") },
+                    modifier = Modifier.clickable {
+                        val app = logScreenContext
+                        app.startActivity(android.content.Intent(app, com.pixelcast.app.LogsActivity::class.java))
+                    },
+                )
                 ListItem(
                     headlineContent = { Text("About & updates") },
                     supportingContent = { Text(if (updateStatus.hasPendingUpdate()) "A new update is available" else "Version, experimental builds and update checks") },
