@@ -21,5 +21,7 @@ class LogsThemeContractTest {
         assertTrue(src("app/src/main/java/com/pixelcast/app/UnifiedLogsPage.kt").contains("AppLog.clear()"))
         assertTrue(src("app/src/main/java/com/pixelcast/app/UnifiedLogsPage.kt").contains("Switch(checked = enabled"))
         assertFalse(manifest.contains("com.pixelcast.app.LogsActivity"))
+        assertTrue(app.contains("painter = if (showingLogs) rememberVectorPainter(Icons.Rounded.Article)"))
+        assertTrue(app.contains("leadingContent = { Icon(Icons.Rounded.Article, contentDescription = null) }"))
     }
 }
