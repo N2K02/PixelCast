@@ -100,7 +100,9 @@ fun CastScreen(state: UiState, actions: UiActions) {
     val updateStatus by LiveUpdater.controller.status.collectAsState()
     var showingSettings by remember { mutableStateOf(false) }
     var showingUpdates by remember { mutableStateOf(false) }
-    fun goHome() { showingSettings = false; showingUpdates = false }
+    var showingLogs by remember { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(enabled = showingLogs) { showingLogs = false; showingSettings = true }
+    fun goHome() { showingSettings = false; showingUpdates = false; showingLogs = false }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -112,6 +114,7 @@ fun CastScreen(state: UiState, actions: UiActions) {
                         Icon(
                             painterResource(when {
                                 showingUpdates -> R.drawable.ic_system_update
+                                showingLogs -> R.drawable.ic_settings
                                 showingSettings -> R.drawable.ic_settings
                                 else -> R.drawable.ic_cast
                             }),
@@ -121,6 +124,7 @@ fun CastScreen(state: UiState, actions: UiActions) {
                         )
                         Text(when {
                             showingUpdates -> "About & updates"
+                            showingLogs -> "Logs"
                             showingSettings -> "Settings"
                             else -> "Home"
                         }, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -137,14 +141,14 @@ fun CastScreen(state: UiState, actions: UiActions) {
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(
-                    selected = !showingSettings,
+                    selected = !showingSettings && !showingLogs && !showingUpdates,
                     onClick = ::goHome,
                     icon = { Icon(painterResource(R.drawable.ic_cast), contentDescription = "Home") },
                     label = { Text("Home") },
                 )
                 NavigationBarItem(
-                    selected = showingSettings,
-                    onClick = { showingSettings = true; showingUpdates = false },
+                    selected = showingSettings || showingLogs || showingUpdates,
+                    onClick = { showingSettings = true; showingUpdates = false; showingLogs = false },
                     icon = { dev.n2k02.updater.N2K02UpdateBadgedIcon(updateStatus) { Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings") } },
                     label = { Text("Settings") },
                 )
@@ -158,7 +162,10 @@ fun CastScreen(state: UiState, actions: UiActions) {
             }
         },
     ) { padding ->
-        if (showingUpdates) {
+        if (showingLogs) {
+            PixelCastLogsPage(modifier = Modifier.fillMaxSize().padding(padding),
+                onBack = { showingLogs = false; showingSettings = true })
+        } else if (showingUpdates) {
             UpdatesPage(modifier = Modifier.padding(padding))
         } else if (showingSettings) {
             Column(
@@ -173,14 +180,10 @@ fun CastScreen(state: UiState, actions: UiActions) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 16.dp, top = 6.dp, bottom = 12.dp),
                 )
-                val logScreenContext = androidx.compose.ui.platform.LocalContext.current
                 ListItem(
                     headlineContent = { Text("Logs") },
                     supportingContent = { Text("Private diagnostic and crash history") },
-                    modifier = Modifier.clickable {
-                        val app = logScreenContext
-                        app.startActivity(android.content.Intent(app, com.pixelcast.app.LogsActivity::class.java))
-                    },
+                    modifier = Modifier.clickable { showingLogs = true; showingSettings = false },
                 )
                 ListItem(
                     headlineContent = { Text("About & updates") },
