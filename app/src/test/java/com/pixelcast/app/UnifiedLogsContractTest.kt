@@ -27,4 +27,13 @@ class UnifiedLogsContractTest {
             LogEventOrdering.merge(saved, activity, "2026-10-29"))
     }
 
+    @Test fun runtimeEmitsPrivacySafeLifecycleEvents() {
+        val path = "app/src/main/java/com/pixelcast/app/CastService.kt"
+        val activity = listOf(File(path), File("../$path")).first { it.isFile }.readText()
+        assertTrue(activity.contains("CAST_START_FAILED"))
+        assertTrue(activity.contains("CAST_PLAYING"))
+        assertTrue(activity.contains("CAST_STOP_REQUESTED"))
+        assertFalse(activity.contains("AppLog.add(\"CAST\", e.message"))
+    }
+
 }
