@@ -23,6 +23,7 @@
         android:label="PixelCast"
         android:theme="@style/Theme.PixelCast"
         android:usesCleartextTraffic="true">
+        <activity android:name="com.pixelcast.app.LogsActivity" android:exported="false" android:label="Logs" />
         <provider android:name="com.pixelcast.app.CrashJournalProvider" android:authorities="${applicationId}.crashjournal" android:exported="false" android:initOrder="100" />
 
 
