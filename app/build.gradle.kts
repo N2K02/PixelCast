@@ -15,8 +15,8 @@ android {
 
     defaultConfig {
         applicationId = "com.pixelcast.app"
-        minSdk = 29
-        targetSdk = 36
+        minSdk = 26
+        targetSdk = 37
         // One decimal place: 1.0, 1.1 … 1.9, 2.0. versionCode 1.4 -> 14 (always goes up).
         versionName = appVersion + ((findProperty("appVersionSuffix") as String?) ?: "")
         versionCode = (findProperty("appVersionCode") as String?)?.toIntOrNull() ?: appVersionCode
@@ -24,6 +24,7 @@ android {
 
 
     buildTypes {
+        getByName("debug") { versionNameSuffix = "-debug" }
         getByName("release") {
             // R8 removes unused code (most of Compose) and resources: ~32 MB -> a few MB.
             isMinifyEnabled = true

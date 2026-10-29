@@ -19,7 +19,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.material.icons.rounded.PowerSettingsNew
+import androidx.compose.material.icons.rounded.Article
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -100,7 +102,9 @@ fun CastScreen(state: UiState, actions: UiActions) {
     val updateStatus by LiveUpdater.controller.status.collectAsState()
     var showingSettings by remember { mutableStateOf(false) }
     var showingUpdates by remember { mutableStateOf(false) }
-    fun goHome() { showingSettings = false; showingUpdates = false }
+    var showingLogs by remember { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(enabled = showingLogs) { showingLogs = false; showingSettings = true }
+    fun goHome() { showingSettings = false; showingUpdates = false; showingLogs = false }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -110,7 +114,7 @@ fun CastScreen(state: UiState, actions: UiActions) {
                     Row(verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Icon(
-                            painterResource(when {
+                            painter = if (showingLogs) rememberVectorPainter(Icons.Rounded.Article) else painterResource(when {
                                 showingUpdates -> R.drawable.ic_system_update
                                 showingSettings -> R.drawable.ic_settings
                                 else -> R.drawable.ic_cast
@@ -121,6 +125,7 @@ fun CastScreen(state: UiState, actions: UiActions) {
                         )
                         Text(when {
                             showingUpdates -> "About & updates"
+                            showingLogs -> "Logs"
                             showingSettings -> "Settings"
                             else -> "Home"
                         }, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -137,14 +142,14 @@ fun CastScreen(state: UiState, actions: UiActions) {
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(
-                    selected = !showingSettings,
+                    selected = !showingSettings && !showingLogs && !showingUpdates,
                     onClick = ::goHome,
                     icon = { Icon(painterResource(R.drawable.ic_cast), contentDescription = "Home") },
                     label = { Text("Home") },
                 )
                 NavigationBarItem(
-                    selected = showingSettings,
-                    onClick = { showingSettings = true; showingUpdates = false },
+                    selected = showingSettings || showingLogs || showingUpdates,
+                    onClick = { showingSettings = true; showingUpdates = false; showingLogs = false },
                     icon = { dev.n2k02.updater.N2K02UpdateBadgedIcon(updateStatus) { Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings") } },
                     label = { Text("Settings") },
                 )
@@ -158,7 +163,9 @@ fun CastScreen(state: UiState, actions: UiActions) {
             }
         },
     ) { padding ->
-        if (showingUpdates) {
+        if (showingLogs) {
+            PixelCastLogsPage(modifier = Modifier.fillMaxSize().padding(padding))
+        } else if (showingUpdates) {
             UpdatesPage(modifier = Modifier.padding(padding))
         } else if (showingSettings) {
             Column(
@@ -172,6 +179,12 @@ fun CastScreen(state: UiState, actions: UiActions) {
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 16.dp, top = 6.dp, bottom = 12.dp),
+                )
+                ListItem(
+                    headlineContent = { Text("Logs") },
+                    supportingContent = { Text("Private diagnostic and crash history") },
+                    leadingContent = { Icon(Icons.Rounded.Article, contentDescription = null) },
+                    modifier = Modifier.clickable { showingLogs = true; showingSettings = false },
                 )
                 ListItem(
                     headlineContent = { Text("About & updates") },

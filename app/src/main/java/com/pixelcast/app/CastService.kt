@@ -135,6 +135,7 @@ class CastService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        AppLog.init(applicationContext)
         notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, "Casting", NotificationManager.IMPORTANCE_LOW).apply {
@@ -237,6 +238,7 @@ class CastService : Service() {
         volume = -1
         durationMs = 0
         markPosition(0)
+        AppLog.add("CAST", "CAST_START_REQUESTED")
         update("Connecting to $tvName…")
         try {
             acquireLocks()
@@ -250,8 +252,10 @@ class CastService : Service() {
             holdPolling(3000)
             startPolling()
             setUpVolume(renderingUrl)
+            AppLog.add("CAST", "CAST_PLAYING")
             update("Playing on $tvName")
         } catch (e: Exception) {
+            AppLog.add("CAST", "CAST_START_FAILED")
             Log.w(TAG, "Cast failed", e)
             useLocalVolume()
             fail("Couldn't play on $tvName: ${e.message}")
@@ -463,6 +467,7 @@ class CastService : Service() {
     }
 
     private fun fail(msg: String) {
+        AppLog.add("CAST", "CAST_ERROR")
         error = true
         playing = false
         update(msg)
@@ -484,6 +489,7 @@ class CastService : Service() {
     // ---------------------------------------------------------------- stop & cleanup
 
     private fun stopCasting() {
+        AppLog.add("CAST", "CAST_STOP_REQUESTED")
         io.execute {
             pollTask?.cancel(false)
             pollTask = null
@@ -504,6 +510,7 @@ class CastService : Service() {
     }
 
     override fun onDestroy() {
+        AppLog.add("CAST", "CAST_SERVICE_RELEASED")
         pollTask?.cancel(false)
         io.shutdown()
         server.shutdown()
