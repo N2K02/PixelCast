@@ -1,4 +1,4 @@
-name: Strict green-only Dependabot auto-merge
+name: Strict Dependabot auto-merge
 on:
   schedule:
     - cron: '*/15 * * * *'
@@ -11,7 +11,7 @@ permissions:
   checks: read
   statuses: read
 concurrency:
-  group: strict-dependabot-auto-merge
+  group: dependabot-strict-merge
   cancel-in-progress: false
 jobs:
   merge:
@@ -20,26 +20,22 @@ jobs:
       - uses: actions/github-script@v7
         with:
           script: |
-            const { owner, repo } = context.repo;
+            const {owner, repo} = context.repo;
             const prs = await github.paginate(github.rest.pulls.list, {owner, repo, state: 'open', per_page: 100});
             for (const candidate of prs) {
               if (candidate.user.login !== 'dependabot[bot]' || candidate.draft || candidate.base.ref !== 'main' || !candidate.head.ref.startsWith('dependabot/')) continue;
               try {
                 const {data: pr} = await github.rest.pulls.get({owner, repo, pull_number: candidate.number});
-                if (pr.mergeable !== true || pr.draft || pr.base.ref !== 'main') continue;
+                if (pr.mergeable !== true) continue;
                 const sha = pr.head.sha;
                 const checks = await github.paginate(github.rest.checks.listForRef, {owner, repo, ref: sha, per_page: 100}, r => r.data.check_runs);
                 const {data: statuses} = await github.rest.repos.getCombinedStatusForRef({owner, repo, ref: sha});
-                // Fail closed: require a real build/test/validation/guard check, not just a successful status.
-                if (!checks.length || !checks.some(c => /build|test|validate|validation|guard|compile|lint|ci/i.test(c.name))) continue;
+                if (!checks.length || !checks.some(c => /build|test|validate|guard|compile|lint|ci/i.test(c.name))) continue;
                 if (checks.some(c => c.status !== 'completed' || c.conclusion !== 'success')) continue;
                 if (statuses.statuses.some(s => s.state !== 'success')) continue;
-                // Re-read immediately before merge: never merge a changed or conflicting head.
                 const {data: fresh} = await github.rest.pulls.get({owner, repo, pull_number: pr.number});
                 if (fresh.head.sha !== sha || fresh.mergeable !== true || fresh.draft || fresh.base.ref !== 'main') continue;
                 await github.rest.pulls.merge({owner, repo, pull_number: pr.number, sha, merge_method: 'squash'});
-                core.info('Squash-merged Dependabot PR #' + pr.number + ' at ' + sha);
-              } catch (e) {
-                core.warning('Dependabot PR #' + candidate.number + ' remains open: ' + e.message);
-              }
+                core.info('Merged Dependabot PR #' + pr.number);
+              } catch (e) { core.warning('PR #' + candidate.number + ' remains open: ' + e.message); }
             }
