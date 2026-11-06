@@ -23,6 +23,6 @@ class CastPollingPolicyTest {
         assertTrue(src.contains("pollTask?.cancel(false)"))
         assertTrue(src.contains("io.shutdown()"))
         assertTrue(src.contains("releaseLocks()"))
-        assertTrue(src.contains("if (transport != null)"))
+        assertTrue(src.contains("active = transport != null"))
     }
 }
