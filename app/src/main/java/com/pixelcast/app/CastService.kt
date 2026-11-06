@@ -77,7 +77,7 @@ class CastService : Service() {
         private const val NOTIFICATION_ID = 1
         private const val SKIP_MS = 10_000L
         private const val VOLUME_STEP = 2
-        private const val VOLUME_POLL_EVERY = 5 // seconds
+        private const val VOLUME_POLL_EVERY = 5 // playing polls; paused polls run every 5s
 
         private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -439,7 +439,8 @@ class CastService : Service() {
                 }
             }
             if (pos != null) markPosition(pos)
-            if (++polls % VOLUME_POLL_EVERY == 0) pollVolume()
+            // Preserve TV volume sync even while transport polling is slowed.
+            if (++polls % VOLUME_POLL_EVERY == 0 || !playing) pollVolume()
             update(newMessage)
         } catch (e: Exception) {
             if (++failures >= 5) fail("Lost connection to $tvName")
@@ -447,9 +448,23 @@ class CastService : Service() {
     }
 
     private fun startPolling() {
-        if (pollTask == null) {
-            pollTask = io.scheduleWithFixedDelay({ poll() }, 1, 1, TimeUnit.SECONDS)
-        }
+        if (pollTask == null) scheduleNextPoll(1L)
+    }
+
+    /** One scheduled task at a time; paused/finished TV sessions do not need 1Hz UPnP traffic. */
+    private fun scheduleNextPoll(delaySeconds: Long) {
+        pollTask = runCatching {
+            io.schedule({
+                try {
+                    poll()
+                } finally {
+                    val next = CastPollingPolicy.delaySeconds(
+                        active = transport != null, playing = playing)
+                    if (next != null && !io.isShutdown) scheduleNextPoll(next)
+                    else pollTask = null
+                }
+            }, delaySeconds, TimeUnit.SECONDS)
+        }.getOrNull()
     }
 
     private fun holdPolling(ms: Long) {
