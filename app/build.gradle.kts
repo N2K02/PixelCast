@@ -57,7 +57,7 @@ dependencies {
  // Opt-in compile-only shared library evaluation; no production runtime cutover.
 dependencies {
     implementation("dev.n2k02:theme:0.1.5")
-    implementation("dev.n2k02:updater:0.1.20")
+    implementation("dev.n2k02:updater:0.1.30")
     testImplementation("junit:junit:4.13.2")
 }
 
