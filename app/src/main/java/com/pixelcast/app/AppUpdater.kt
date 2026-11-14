@@ -219,72 +219,47 @@ object AppUpdater {
 
     // ---------------------------------------------------------------- GitHub
 
-    private suspend fun latestRelease(): Release? = runCatching { publicStableRelease() }.getOrNull() ?: legacyLatestRelease()
+    private suspend fun latestRelease(): Release? = legacyLatestRelease()
 
-    /** Public manifest remains accessible after the source repository becomes private. */
-    private suspend fun publicStableRelease(): Release? = withContext(Dispatchers.IO) {
-        val connection = URL("https://n2k02.github.io/pixelcast/updates/stable.json").openConnection() as HttpURLConnection
-        try {
-            connection.connectTimeout = 10_000
-            connection.readTimeout = 15_000
-            if (connection.responseCode == 404) return@withContext null
-            if (connection.responseCode != 200) throw IOException("Manifest HTTP ${connection.responseCode}")
-            val data = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
-            val digest = data.optString("sha256").lowercase()
-            val apkUrl = data.optString("apkUrl")
-            val code = data.optLong("versionCode")
-            if (code <= 0 || !apkUrl.startsWith("https://") || !Regex("[a-f0-9]{64}").matches(digest)) return@withContext null
-            val notesJson = data.optJSONArray("notes")
-            val notes = if (notesJson == null) emptyList() else (0 until notesJson.length()).map { notesJson.optString(it) }
-            Release(
-                tag = data.optString("tag"),
-                versionName = data.optString("versionName"),
-                versionCode = code,
-                notes = notes,
-                apkUrl = apkUrl,
-                apkName = data.optString("apkName"),
-                apkSize = data.optLong("apkSize"),
-                sha256 = digest,
-                pageUrl = data.optString("pageUrl").ifBlank { "https://n2k02.github.io/pixelcast/" },
-            )
-        } finally {
-            connection.disconnect()
-        }
-    }
-
-    /** Experimental builds are delivered separately from public stable downloads. */
+    /** Read existing experimental APKs from public GitHub Releases, not website manifests. */
     private suspend fun experimentalRelease(): Release? = withContext(Dispatchers.IO) {
-        val connection = URL("https://n2k02.github.io/pixelcast/updates/experimental.json")
+        val connection = URL("https://api.github.com/repos/$repo/releases?per_page=100")
             .openConnection() as HttpURLConnection
         try {
             connection.connectTimeout = 10_000
             connection.readTimeout = 15_000
+            connection.setRequestProperty("Accept", "application/vnd.github+json")
+            connection.setRequestProperty("User-Agent", "$appName-updater (Android)")
             if (connection.responseCode == 404) return@withContext null
-            if (connection.responseCode != 200) throw IOException("Experimental manifest HTTP ${connection.responseCode}")
-            val data = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
-            if (data.optString("channel") != "experimental") return@withContext null
-            val digest = data.optString("sha256").lowercase()
-            val url = data.optString("apkUrl")
-            val code = data.optLong("versionCode")
-            if (code <= 0 || !url.startsWith("https://github.com/") ||
-                !Regex("[a-f0-9]{64}").matches(digest)) return@withContext null
-            val notesJson = data.optJSONArray("notes")
-            val notes = if (notesJson == null) emptyList() else
-                (0 until notesJson.length()).map { notesJson.optString(it) }
-            Release(
-                tag = data.optString("tag"),
-                versionName = data.optString("versionName"),
-                versionCode = code,
-                notes = notes,
-                apkUrl = url,
-                apkName = data.optString("apkName"),
-                apkSize = data.optLong("apkSize"),
-                sha256 = digest,
-                pageUrl = data.optString("pageUrl").ifBlank { "https://n2k02.github.io/pixelcast/" },
-            )
-        } finally {
-            connection.disconnect()
-        }
+            if (connection.responseCode != 200) throw IOException("Releases HTTP ${connection.responseCode}")
+            val releases = org.json.JSONArray(connection.inputStream.bufferedReader().use { it.readText() })
+            (0 until releases.length()).mapNotNull { index ->
+                val release = releases.optJSONObject(index) ?: return@mapNotNull null
+                if (release.optBoolean("draft") || !release.optBoolean("prerelease")) return@mapNotNull null
+                val tag = release.optString("tag_name")
+                val run = Regex("""^experimental-pr-\\d+-run-(\\d+)$""")
+                    .matchEntire(tag)?.groupValues?.get(1)?.toLongOrNull()
+                    ?: return@mapNotNull null
+                val code = 100_000L + run
+                val assets = release.optJSONArray("assets") ?: return@mapNotNull null
+                val apk = (0 until assets.length()).mapNotNull { assets.optJSONObject(it) }
+                    .firstOrNull { it.optString("name").endsWith(".apk", true) &&
+                        it.optString("browser_download_url").startsWith("https://github.com/") }
+                    ?: return@mapNotNull null
+                Release(
+                    tag = tag,
+                    versionName = tag,
+                    versionCode = code,
+                    notes = whatsNew(release.optString("body")),
+                    apkUrl = apk.optString("browser_download_url"),
+                    apkName = apk.optString("name"),
+                    apkSize = apk.optLong("size"),
+                    sha256 = apk.optString("digest").takeIf { it.startsWith("sha256:") }
+                        ?.removePrefix("sha256:")?.lowercase(),
+                    pageUrl = release.optString("html_url"),
+                )
+            }.maxByOrNull { it.versionCode }
+        } finally { connection.disconnect() }
     }
 
     private suspend fun legacyLatestRelease(): Release? = withContext(Dispatchers.IO) {
