@@ -237,7 +237,7 @@ object AppUpdater {
                 val release = releases.optJSONObject(index) ?: return@mapNotNull null
                 if (release.optBoolean("draft") || !release.optBoolean("prerelease")) return@mapNotNull null
                 val tag = release.optString("tag_name")
-                val run = Regex("""^experimental-pr-\\d+-run-(\\d+)$""")
+                val run = Regex("""^experimental-pr-\d+-run-(\d+)$""")
                     .matchEntire(tag)?.groupValues?.get(1)?.toLongOrNull()
                     ?: return@mapNotNull null
                 val code = 100_000L + run
